@@ -6,6 +6,7 @@ import { LOG_LEVELS } from "./logger.js";
 describe("Logger contract", () => {
   it("LOG_LEVELS lists the supported levels in order", () => {
     expect(LOG_LEVELS).toEqual(["debug", "info", "step", "success", "warn", "error"]);
+    expect(LOG_LEVELS).toHaveLength(6);
   });
 
   it("a conforming Logger receives message + level", () => {
@@ -14,6 +15,8 @@ describe("Logger contract", () => {
     const level: LogLevel = "step";
     logger.log("hello", level);
     expect(log).toHaveBeenCalledWith("hello", "step");
+    logger.log("bare message");
+    expect(log).toHaveBeenLastCalledWith("bare message");
   });
 
   it("option shapes accept an injected logger and a timeout", () => {
