@@ -80,6 +80,18 @@ what we learned. Plans below numbered in execution order.
   build only. A package needing a non-default build (extra entries, different
   target) must instead:
   `import { baseTsup } from "../../tsup.config.base.js"; import { defineConfig } from "tsup"; export default defineConfig(baseTsup({ entry: [...] }));`
+- **Canonical package `exports` map (every package copies this).** tsup dual
+  build emits `index.js`/`index.d.ts` (ESM) and `index.cjs`/`index.d.cts`
+  (CJS). Use per-condition `types` so CJS consumers get `.d.cts`:
+  ```json
+  "exports": { ".": {
+    "import":  { "types": "./dist/index.d.ts",  "default": "./dist/index.js" },
+    "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
+  } },
+  "main": "./dist/index.cjs", "module": "./dist/index.js", "types": "./dist/index.d.ts"
+  ```
+  A flat top-level `"types"` is wrong (breaks CJS consumers under
+  `verbatimModuleSyntax`). Build verification must assert `index.d.cts` exists.
 - **Coverage excludes `**/index.ts` globally.** Correct for pure re-export
   barrels. A package that puts real logic in `index.ts` must either move that
   logic to a named module or adjust coverage when coverage is activated

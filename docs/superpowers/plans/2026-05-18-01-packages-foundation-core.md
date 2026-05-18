@@ -278,9 +278,14 @@ git commit -m "chore: add shared tsup/vitest/eslint base configuration"
   "files": ["dist"],
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "main": "./dist/index.cjs",
@@ -675,8 +680,9 @@ Expected: `tsc --noEmit` clean; tsup writes
 
 - [ ] **Step 6: Verify the three build artifacts exist**
 
-Run: `ls packages/core/dist/index.js packages/core/dist/index.cjs packages/core/dist/index.d.ts`
-Expected: all three paths print (no "No such file").
+Run: `ls packages/core/dist/index.js packages/core/dist/index.cjs packages/core/dist/index.d.ts packages/core/dist/index.d.cts`
+Expected: all four paths print (no "No such file"). The `index.d.cts` is the
+CJS type declaration wired by the `require` condition of the exports map.
 
 - [ ] **Step 7: Commit**
 
