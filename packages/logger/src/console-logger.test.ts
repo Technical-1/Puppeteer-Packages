@@ -40,5 +40,7 @@ describe("createConsoleLogger", () => {
     log.log("kept", "error");
     expect(spies.info).not.toHaveBeenCalled();
     expect(spies.error).toHaveBeenCalledWith("kept");
+    log.log("boundary", "warn");
+    expect(spies.warn).toHaveBeenCalledWith("boundary"); // level == minLevel → kept
   });
 });

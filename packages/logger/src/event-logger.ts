@@ -11,6 +11,14 @@ export interface LogEvent {
  * Lets a host (e.g. an Electron renderer bridge) stream lines to a UI.
  */
 export class EventLogger extends EventEmitter implements Logger {
+  constructor() {
+    super();
+    // This logger exists to fan one stream out to many subscribers (e.g. an
+    // Electron UI bridge plus diagnostics). Disable Node's default
+    // maxListeners=10 warning — listener count is the host's concern.
+    this.setMaxListeners(0);
+  }
+
   log(message: string, level: LogLevel = "info"): void {
     const event: LogEvent = { message, level };
     this.emit("log", event);

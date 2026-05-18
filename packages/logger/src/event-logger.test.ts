@@ -18,8 +18,14 @@ describe("createEventLogger", () => {
     expect(handler).toHaveBeenCalledWith({ message: "bare", level: "info" });
   });
 
-  it("satisfies the core Logger shape (has a log method)", () => {
+  it("delivers each log to every subscribed listener", () => {
     const logger = createEventLogger();
-    expect(typeof logger.log).toBe("function");
+    const h1 = vi.fn();
+    const h2 = vi.fn();
+    logger.on("log", h1);
+    logger.on("log", h2);
+    logger.log("broadcast", "info");
+    expect(h1).toHaveBeenCalledWith({ message: "broadcast", level: "info" });
+    expect(h2).toHaveBeenCalledWith({ message: "broadcast", level: "info" });
   });
 });
