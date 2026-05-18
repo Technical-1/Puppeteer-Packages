@@ -141,6 +141,9 @@ what we learned. Plans below numbered in execution order.
 
 ## Plan files
 
-- `2026-05-18-01-packages-foundation-core.md` ← detailed, ready to execute
+- `2026-05-18-01-packages-foundation-core.md` ← ✅ DONE, merged to `main`
+  (Plan 01: monorepo + `@technical-1/core`, 13 tests, dual build verified).
+- `2026-05-18-02-utility-tier.md` ← detailed, ready to execute (Plan 02:
+  `retry` + `logger` + `config`).
 - Subsequent plans written iteratively after each predecessor is verified.
 - Template plans saved under `Puppeteer-Template/docs/superpowers/plans/`.
