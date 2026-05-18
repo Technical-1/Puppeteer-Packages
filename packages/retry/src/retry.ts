@@ -22,12 +22,18 @@ export interface RetryOptions extends LoggerOption {
 }
 
 function defaultIsRetryable(err: unknown): boolean {
-  return (
-    typeof err === "object" &&
-    err !== null &&
-    "retryable" in err &&
-    (err as { retryable?: unknown }).retryable === true
-  );
+  try {
+    return (
+      typeof err === "object" &&
+      err !== null &&
+      "retryable" in err &&
+      (err as { retryable?: unknown }).retryable === true
+    );
+  } catch {
+    // An error object with a throwing `retryable` getter must not escape
+    // the predicate as an uncaught exception — treat it as terminal.
+    return false;
+  }
 }
 
 function delayFor(attempt: number, o: Required<Pick<RetryOptions, "minDelayMs" | "maxDelayMs" | "factor" | "jitter">>): number {
@@ -43,6 +49,10 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
       return;
     }
     const timer = setTimeout(() => {
+      // Resolve path: `onAbort` was registered with { once: true }, but
+      // { once: true } only auto-detaches a listener that actually FIRED.
+      // Here abort never fired, so the listener is still attached — remove
+      // it explicitly to avoid leaking on a long-lived/shared AbortSignal.
       signal?.removeEventListener("abort", onAbort);
       resolve();
     }, ms);
