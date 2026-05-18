@@ -12,4 +12,19 @@ describe("public surface", () => {
     expect(typeof core.SessionError).toBe("function");
     expect(core.LOG_LEVELS).toContain("error");
   });
+
+  it("exposes exactly the intended runtime (value) exports — no more, no less", () => {
+    expect(Object.keys(core).sort()).toEqual(
+      [
+        "CaptchaError",
+        "LOG_LEVELS",
+        "NavigationError",
+        "PptrKitError",
+        "ProxyError",
+        "SelectorNotFoundError",
+        "SessionError",
+        "TimeoutError",
+      ].sort(),
+    );
+  });
 });
