@@ -96,6 +96,15 @@ what we learned. Plans below numbered in execution order.
   `upload-artifact`/`download-artifact` on `dist/` or Turbo remote cache
   (spec §10 lists remote cache as a documented opt-in).
 
+## Plan 09 release decisions to make deliberately
+
+- **Internal-dep range strategy.** `.changeset/config.json` has
+  `updateInternalDependencies: "patch"`, so on publish Changesets pins internal
+  `workspace:*` deps (e.g. `@technical-1/retry` → `@technical-1/core`) to an
+  exact resolved version, not a caret range. Consumers won't auto-satisfy a
+  newer `core` without an explicit dependent release. Plan 09 must consciously
+  confirm or change this before the first `changeset publish`.
+
 ## Conventions established in Plan 01 (apply in later plans)
 
 - **Root is ESM.** Root `package.json` has `"type": "module"`; root `.js`
