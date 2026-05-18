@@ -80,6 +80,12 @@ what we learned. Plans below numbered in execution order.
   build only. A package needing a non-default build (extra entries, different
   target) must instead:
   `import { baseTsup } from "../../tsup.config.base.js"; import { defineConfig } from "tsup"; export default defineConfig(baseTsup({ entry: [...] }));`
+- **Detect/classify suite errors by property, not `instanceof`.** Because
+  packages publish dual ESM+CJS, `err instanceof PptrKitError` is unreliable
+  across package boundaries. Consumers (especially `@technical-1/retry`)
+  branch on `err.retryable === true` (cross-realm-safe retry signal) and
+  `err.name` (cross-realm-safe type discriminant). Documented in
+  `packages/core/README.md`.
 - **Every package ships its own minimal `vitest.config.ts`** (`{ test: {
   include: ["src/**/*.test.ts"], environment: "node" } }`). Required so
   `pnpm --filter <pkg> test` / Turbo's per-package `test` task resolves that

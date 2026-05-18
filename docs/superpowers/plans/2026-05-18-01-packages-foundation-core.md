@@ -472,10 +472,10 @@ export class PptrKitError extends Error {
 
   constructor(message: string, opts: PptrKitErrorOptions = {}) {
     super(message, opts.cause !== undefined ? { cause: opts.cause } : undefined);
+    Object.setPrototypeOf(this, new.target.prototype);
     this.name = new.target.name;
     this.retryable = opts.retryable ?? false;
     this.context = opts.context ?? {};
-    Object.setPrototypeOf(this, new.target.prototype);
   }
 }
 
