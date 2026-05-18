@@ -80,6 +80,12 @@ what we learned. Plans below numbered in execution order.
   build only. A package needing a non-default build (extra entries, different
   target) must instead:
   `import { baseTsup } from "../../tsup.config.base.js"; import { defineConfig } from "tsup"; export default defineConfig(baseTsup({ entry: [...] }));`
+- **`Logger.log(message, level?)` — `level` is optional by contract.** The
+  `core` interface deliberately does NOT impose a default level (a pure
+  contract must not). Plan 02's `@technical-1/logger` package owns the
+  default-when-omitted semantics: its console + EventEmitter impls MUST define
+  and document the behavior for `level === undefined` (recommended default
+  `"info"`), so the ~18 consumer packages don't each guess.
 - **Detect/classify suite errors by property, not `instanceof`.** Because
   packages publish dual ESM+CJS, `err instanceof PptrKitError` is unreliable
   across package boundaries. Consumers (especially `@technical-1/retry`)
