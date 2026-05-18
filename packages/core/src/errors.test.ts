@@ -25,6 +25,11 @@ describe("PptrKitError", () => {
     expect(e.retryable).toBe(true);
     expect(e.context).toEqual({ a: 1 });
   });
+
+  it("does not set the cause property when no cause is provided", () => {
+    const e = new PptrKitError("no cause");
+    expect("cause" in e).toBe(false);
+  });
 });
 
 describe("subclasses", () => {
@@ -50,5 +55,17 @@ describe("subclasses", () => {
     expect(new ProxyError("bad proxy").retryable).toBe(true);
     expect(new CaptchaError("blocked").retryable).toBe(false);
     expect(new SessionError("no session").retryable).toBe(false);
+  });
+
+  it("subclasses are instanceof Error and instanceof PptrKitError", () => {
+    const e = new NavigationError("https://x.test");
+    expect(e).toBeInstanceOf(Error);
+    expect(e).toBeInstanceOf(PptrKitError);
+    expect(e).toBeInstanceOf(NavigationError);
+  });
+
+  it("a caller can override the per-subclass retryable default", () => {
+    expect(new CaptchaError("x", { retryable: true }).retryable).toBe(true);
+    expect(new NavigationError("https://x.test", { retryable: false }).retryable).toBe(false);
   });
 });
