@@ -120,6 +120,11 @@ what we learned. Plans below numbered in execution order.
   default-when-omitted semantics: its console + EventEmitter impls MUST define
   and document the behavior for `level === undefined` (recommended default
   `"info"`), so the ~18 consumer packages don't each guess.
+- **No dead `eslint-disable` directives.** The flat `eslint.config.js` enables
+  only `@typescript-eslint/no-unused-vars` (error) and `no-explicit-any`
+  (warn). A disable for any other rule (e.g. `no-constant-condition` on
+  `while (true)`) is UNUSED and itself emits a lint warning. Don't add disable
+  directives for rules that aren't enabled; the monorepo lints with 0 warnings.
 - **Node typings come from root `@types/node`.** `@types/node` is a ROOT
   devDependency; with NodeNext + no explicit `types` array it is auto-included
   in every package. Packages using Node globals (`setTimeout`, `AbortSignal`,
