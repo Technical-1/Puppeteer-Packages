@@ -71,6 +71,20 @@ what we learned. Plans below numbered in execution order.
   (`examples` for a single package, `examples/*` for sub-packages). Until then
   the entry is inert (no examples exist) and harmless.
 
+## Conventions established in Plan 01 (apply in later plans)
+
+- **Root is ESM.** Root `package.json` has `"type": "module"`; root `.js`
+  config files (e.g. `eslint.config.js`) are ESM.
+- **`tsup.config.base.ts` re-export is a no-overrides shortcut.** A package
+  using `export { default } from "../../tsup.config.base.js"` gets the default
+  build only. A package needing a non-default build (extra entries, different
+  target) must instead:
+  `import { baseTsup } from "../../tsup.config.base.js"; import { defineConfig } from "tsup"; export default defineConfig(baseTsup({ entry: [...] }));`
+- **Coverage excludes `**/index.ts` globally.** Correct for pure re-export
+  barrels. A package that puts real logic in `index.ts` must either move that
+  logic to a named module or adjust coverage when coverage is activated
+  (Plan 09).
+
 ## Plan files
 
 - `2026-05-18-01-packages-foundation-core.md` ← detailed, ready to execute
