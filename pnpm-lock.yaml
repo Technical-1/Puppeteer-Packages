@@ -38,6 +38,12 @@ importers:
 
   packages/core: {}
 
+  packages/logger:
+    dependencies:
+      '@technical-1/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/retry:
     dependencies:
       '@technical-1/core':
