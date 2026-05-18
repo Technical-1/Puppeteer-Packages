@@ -71,6 +71,18 @@ what we learned. Plans below numbered in execution order.
   (`examples` for a single package, `examples/*` for sub-packages). Until then
   the entry is inert (no examples exist) and harmless.
 
+## Known issues to resolve in Plan 09 (publish/release)
+
+- **Duplicate `//# sourceMappingURL` in tsup output.** tsup 8.5.1 (latest as of
+  2026-05-18 — there is no 8.5.3) emits the sourcemap directive twice in every
+  `dist/index.js` / `dist/index.cjs`. The two directives are identical and
+  point to the same valid map, so it is functionally harmless (bundlers and
+  Node both resolve correctly) — deferred, not ignored. Plan 09 (which builds
+  the actual npm publish pipeline / `release.yml`) MUST add a deterministic
+  sourcemap-comment dedup (post-build step or a vetted tsup plugin in
+  `tsup.config.base.ts`) and verify it against the real `npm pack` tarball
+  before first publish. Affects all packages via the shared base config.
+
 ## Conventions established in Plan 01 (apply in later plans)
 
 - **Root is ESM.** Root `package.json` has `"type": "module"`; root `.js`
