@@ -83,6 +83,19 @@ what we learned. Plans below numbered in execution order.
   `tsup.config.base.ts`) and verify it against the real `npm pack` tarball
   before first publish. Affects all packages via the shared base config.
 
+## CI hardening deferred (before repo goes public / Plan 09)
+
+- **SHA-pin GitHub Actions.** `ci.yml` uses floating `@v4` tags
+  (`actions/checkout`, `pnpm/action-setup`, `actions/setup-node`). Before the
+  repo is public or gains external contributors, pin all actions to immutable
+  commit SHAs via a vetted tool (`pinact` / `pin-github-action` / Dependabot) —
+  do NOT hand-paste SHAs. Applies to `release.yml` (Plan 09) too.
+- **CI install/build duplication.** `build` and `integration` jobs each run
+  `pnpm install` + `turbo run build` independently. Negligible for `core`;
+  before the monorepo grows, Plan 09 should bridge them via
+  `upload-artifact`/`download-artifact` on `dist/` or Turbo remote cache
+  (spec §10 lists remote cache as a documented opt-in).
+
 ## Conventions established in Plan 01 (apply in later plans)
 
 - **Root is ESM.** Root `package.json` has `"type": "module"`; root `.js`
