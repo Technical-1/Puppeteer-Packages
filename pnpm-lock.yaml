@@ -35,6 +35,12 @@ importers:
 
   packages/core: {}
 
+  packages/retry:
+    dependencies:
+      '@technical-1/core':
+        specifier: workspace:*
+        version: link:../core
+
 packages:
 
   '@babel/runtime@7.29.2':
