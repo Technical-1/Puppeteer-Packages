@@ -826,6 +826,39 @@ describe("loadConfig", () => {
       expect((err as PptrKitError).context).toEqual({ env: "X_KEY" });
     }
   });
+
+  it("treats an empty-string env var as missing for a required field", () => {
+    expect(() =>
+      loadConfig({ key: { env: "X_KEY", required: true } }, { X_KEY: "" }),
+    ).toThrow(PptrKitError);
+  });
+
+  it("uses the default (no throw) when a field is both required and has a default", () => {
+    const cfg = loadConfig(
+      { key: { env: "X_KEY", required: true, default: "fallback" } },
+      {},
+    );
+    expect(cfg.key).toBe("fallback");
+  });
+
+  it("keeps a falsy default when the env var is absent", () => {
+    const cfg = loadConfig(
+      {
+        flag: { env: "X_FLAG", default: false },
+        count: { env: "X_COUNT", default: 0 },
+        name: { env: "X_NAME", default: "" },
+      },
+      {},
+    );
+    expect(cfg.flag).toBe(false);
+    expect(cfg.count).toBe(0);
+    expect(cfg.name).toBe("");
+  });
+
+  it("yields undefined (no throw) for an optional field with no default and no env var", () => {
+    const cfg = loadConfig({ opt: { env: "X_OPT" } }, {});
+    expect(cfg.opt).toBeUndefined();
+  });
 });
 ```
 
@@ -842,11 +875,16 @@ import { PptrKitError } from "@technical-1/core";
 export interface ConfigField<V> {
   /** Environment variable name to read. */
   env: string;
-  /** Value used when the env var is absent. */
+  /** Value used when the env var is absent OR set to an empty string. */
   default?: V;
   /** Convert the raw string to V. Omit to keep the raw string. */
   parse?: (raw: string) => V;
-  /** When true, a missing env var (and no default) throws. */
+  /**
+   * When true, a missing env var with no `default` throws a core
+   * `PptrKitError`. "Missing" means unset OR an empty string — a blank
+   * value does NOT satisfy a required field. If a `default` is also
+   * provided, the default is used and nothing is thrown.
+   */
   required?: boolean;
 }
 
@@ -854,17 +892,21 @@ export type ConfigSchema<T> = { [K in keyof T]: ConfigField<T[K]> };
 
 /**
  * Resolve a typed config object from a schema. Reads `env` (defaults to
- * `process.env`). Throws a core `PptrKitError` for a missing required field.
+ * `process.env`). An env var that is unset OR an empty string is treated as
+ * absent. A missing required field with no `default` throws a core
+ * `PptrKitError` whose `context` carries the offending env var NAME (never
+ * its value — no secret leakage).
  */
 export function loadConfig<T>(
   schema: ConfigSchema<T>,
   env: Record<string, string | undefined> = process.env,
 ): T {
-  const out = {} as T;
+  const out: Partial<T> = {};
   for (const key of Object.keys(schema) as (keyof T)[]) {
     const field = schema[key];
     const raw = env[field.env];
-    if (raw === undefined) {
+    const missing = raw === undefined || raw === "";
+    if (missing) {
       if (field.required && field.default === undefined) {
         throw new PptrKitError(`Missing required config: ${field.env}`, {
           context: { env: field.env },
@@ -875,7 +917,9 @@ export function loadConfig<T>(
       out[key] = (field.parse ? field.parse(raw) : raw) as T[keyof T];
     }
   }
-  return out;
+  // Single assertion: the loader trusts the caller's schema to cover every
+  // non-optional key of T (via a default or a present/required env var).
+  return out as T;
 }
 ```
 
@@ -968,7 +1012,9 @@ typed env/options `loadConfig`.
 Run: `pnpm install && pnpm run ci`
 Expected: `turbo run typecheck lint test build` succeeds for ALL four packages
 (`core`, `retry`, `logger`, `config`). Capture the turbo summary and per-package
-test counts (core 13, retry 7, logger 7, config 5).
+test counts (core 13, retry 10, logger 7, config 9 — counts grew from
+code-review hardening: retry +abort-mid-sleep/logger-warn/backoff, config
++empty-string/required-default/falsy-default/optional).
 
 - [ ] **Step 3: Invariant sweep**
 
