@@ -80,6 +80,11 @@ what we learned. Plans below numbered in execution order.
   build only. A package needing a non-default build (extra entries, different
   target) must instead:
   `import { baseTsup } from "../../tsup.config.base.js"; import { defineConfig } from "tsup"; export default defineConfig(baseTsup({ entry: [...] }));`
+- **Every package ships its own minimal `vitest.config.ts`** (`{ test: {
+  include: ["src/**/*.test.ts"], environment: "node" } }`). Required so
+  `pnpm --filter <pkg> test` / Turbo's per-package `test` task resolves that
+  package's tests from its own directory. The root `vitest.config.ts` still
+  drives workspace-wide runs; the two coexist without conflict.
 - **Canonical package `exports` map (every package copies this).** tsup dual
   build emits `index.js`/`index.d.ts` (ESM) and `index.cjs`/`index.d.cts`
   (CJS). Use per-condition `types` so CJS consumers get `.d.cts`:

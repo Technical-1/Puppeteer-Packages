@@ -263,6 +263,7 @@ git commit -m "chore: add shared tsup/vitest/eslint base configuration"
 - Create: `packages/core/tsconfig.json`
 - Create: `packages/core/tsup.config.ts`
 - Create: `packages/core/README.md`
+- Create: `packages/core/vitest.config.ts`
 - Create: `packages/core/src/index.ts`
 
 - [ ] **Step 1: Create `packages/core/package.json`**
@@ -341,6 +342,22 @@ Exports:
 ```ts
 import { SelectorNotFoundError, type Logger } from "@technical-1/core";
 ```
+```
+
+- [ ] **Step 4b: Create `packages/core/vitest.config.ts`** (per-package config so
+  `vitest run` resolves the package's tests when invoked from the package dir
+  via `pnpm --filter`/Turbo's per-package `test` task; the root
+  `vitest.config.ts` still drives workspace-level runs)
+
+```ts
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    include: ["src/**/*.test.ts"],
+    environment: "node",
+  },
+});
 ```
 
 - [ ] **Step 5: Create placeholder `packages/core/src/index.ts`** (replaced in Task 6)
