@@ -84,6 +84,7 @@ export async function withRetry<T>(
   if (opts.signal?.aborted) throw new Error("Aborted before first attempt");
 
   let attempt = 0;
+  // Always exits via `return` (success) or `throw` (exhausted / non-retryable / aborted).
   while (true) {
     attempt += 1;
     try {
