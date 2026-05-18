@@ -34,4 +34,37 @@ describe("loadConfig", () => {
       expect((err as PptrKitError).context).toEqual({ env: "X_KEY" });
     }
   });
+
+  it("treats an empty-string env var as missing for a required field", () => {
+    expect(() =>
+      loadConfig({ key: { env: "X_KEY", required: true } }, { X_KEY: "" }),
+    ).toThrow(PptrKitError);
+  });
+
+  it("uses the default (no throw) when a field is both required and has a default", () => {
+    const cfg = loadConfig(
+      { key: { env: "X_KEY", required: true, default: "fallback" } },
+      {},
+    );
+    expect(cfg.key).toBe("fallback");
+  });
+
+  it("keeps a falsy default when the env var is absent", () => {
+    const cfg = loadConfig(
+      {
+        flag: { env: "X_FLAG", default: false },
+        count: { env: "X_COUNT", default: 0 },
+        name: { env: "X_NAME", default: "" },
+      },
+      {},
+    );
+    expect(cfg.flag).toBe(false);
+    expect(cfg.count).toBe(0);
+    expect(cfg.name).toBe("");
+  });
+
+  it("yields undefined (no throw) for an optional field with no default and no env var", () => {
+    const cfg = loadConfig({ opt: { env: "X_OPT" } }, {});
+    expect(cfg.opt).toBeUndefined();
+  });
 });
