@@ -191,17 +191,16 @@ import { NavigationError, SelectorNotFoundError } from "@technical-1/core";
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
-/** Run a promise to settlement while draining fake timers. */
-async function settle<T>(p: Promise<T>): Promise<T> {
-  const result = p;
-  await vi.runAllTimersAsync();
-  return result;
-}
+// Convention (roadmap): for a rejection-path test, attach the `.rejects`
+// assertion BEFORE draining fake timers so the handler exists when the
+// promise rejects. No `settle()` helper; no dangerouslyIgnoreUnhandledErrors.
 
 describe("withRetry", () => {
   it("resolves on first success without delay", async () => {
     const fn = vi.fn().mockResolvedValue("ok");
-    await expect(settle(withRetry(fn))).resolves.toBe("ok");
+    const p = withRetry(fn);
+    await vi.runAllTimersAsync();
+    await expect(p).resolves.toBe("ok");
     expect(fn).toHaveBeenCalledTimes(1);
     expect(fn).toHaveBeenCalledWith(1);
   });
@@ -211,24 +210,28 @@ describe("withRetry", () => {
       .fn()
       .mockRejectedValueOnce(new NavigationError("https://x.test"))
       .mockResolvedValue("ok");
-    await expect(settle(withRetry(fn, { retries: 3, minDelayMs: 10 }))).resolves.toBe("ok");
+    const p = withRetry(fn, { retries: 3, minDelayMs: 10 });
+    await vi.runAllTimersAsync();
+    await expect(p).resolves.toBe("ok");
     expect(fn).toHaveBeenCalledTimes(2);
   });
 
   it("does not retry a terminal (non-retryable) error", async () => {
     const fn = vi.fn().mockRejectedValue(new SelectorNotFoundError("#x"));
-    await expect(settle(withRetry(fn, { retries: 5 }))).rejects.toBeInstanceOf(
-      SelectorNotFoundError,
-    );
+    const p = withRetry(fn, { retries: 5 });
+    const assertion = expect(p).rejects.toBeInstanceOf(SelectorNotFoundError);
+    await vi.runAllTimersAsync();
+    await assertion;
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
   it("exhausts retries and throws the last error", async () => {
     const err = new NavigationError("https://x.test");
     const fn = vi.fn().mockRejectedValue(err);
-    await expect(
-      settle(withRetry(fn, { retries: 2, minDelayMs: 1 })),
-    ).rejects.toBe(err);
+    const p = withRetry(fn, { retries: 2, minDelayMs: 1 });
+    const assertion = expect(p).rejects.toBe(err);
+    await vi.runAllTimersAsync();
+    await assertion;
     expect(fn).toHaveBeenCalledTimes(3); // initial + 2 retries
   });
 
@@ -237,10 +240,11 @@ describe("withRetry", () => {
       .fn()
       .mockRejectedValueOnce(new Error("plain transient"))
       .mockResolvedValue("ok");
-    const isRetryable = (e: unknown) => e instanceof Error && e.message.includes("transient");
-    await expect(
-      settle(withRetry(fn, { retries: 2, minDelayMs: 1, isRetryable })),
-    ).resolves.toBe("ok");
+    const isRetryable = (e: unknown) =>
+      e instanceof Error && e.message.includes("transient");
+    const p = withRetry(fn, { retries: 2, minDelayMs: 1, isRetryable });
+    await vi.runAllTimersAsync();
+    await expect(p).resolves.toBe("ok");
     expect(fn).toHaveBeenCalledTimes(2);
   });
 
@@ -249,7 +253,7 @@ describe("withRetry", () => {
     const controller = new AbortController();
     controller.abort();
     await expect(
-      settle(withRetry(fn, { signal: controller.signal })),
+      withRetry(fn, { signal: controller.signal }),
     ).rejects.toThrow(/abort/i);
     expect(fn).not.toHaveBeenCalled();
   });

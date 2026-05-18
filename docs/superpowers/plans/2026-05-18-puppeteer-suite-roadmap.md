@@ -120,6 +120,18 @@ what we learned. Plans below numbered in execution order.
   default-when-omitted semantics: its console + EventEmitter impls MUST define
   and document the behavior for `level === undefined` (recommended default
   `"info"`), so the ~18 consumer packages don't each guess.
+- **Node typings come from root `@types/node`.** `@types/node` is a ROOT
+  devDependency; with NodeNext + no explicit `types` array it is auto-included
+  in every package. Packages using Node globals (`setTimeout`, `AbortSignal`,
+  `process`, `node:events`, `Buffer`) need NO per-package `lib`/`types`
+  override. NEVER add `"DOM"` to a Node package's `lib` (it pollutes globals
+  and masks errors). `tsconfig.base.json` stays `lib: ["ES2022"]`.
+- **Async fake-timer tests: attach the rejection assertion BEFORE draining.**
+  For a promise expected to reject, do
+  `const p = fn(); const a = expect(p).rejects.toX(); await vi.runAllTimersAsync(); await a;`
+  — never drain timers before the `.rejects` handler is attached, and never
+  use `dangerouslyIgnoreUnhandledErrors` (it masks the bug). Resolve-path
+  tests can `await vi.runAllTimersAsync()` then `await expect(p).resolves`.
 - **Detect/classify suite errors by property, not `instanceof`.** Because
   packages publish dual ESM+CJS, `err instanceof PptrKitError` is unreliable
   across package boundaries. Consumers (especially `@technical-1/retry`)
