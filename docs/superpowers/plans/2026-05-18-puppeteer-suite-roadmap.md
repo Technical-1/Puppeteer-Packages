@@ -103,7 +103,13 @@ what we learned. Plans below numbered in execution order.
   `workspace:*` deps (e.g. `@technical-1/retry` → `@technical-1/core`) to an
   exact resolved version, not a caret range. Consumers won't auto-satisfy a
   newer `core` without an explicit dependent release. Plan 09 must consciously
-  confirm or change this before the first `changeset publish`.
+  confirm or change this before the first `changeset publish`, and surface the
+  decision as a comment in `release.yml` when that file is created so the
+  executor cannot miss it.
+- **CI changeset-status guard.** No CI job verifies a PR includes a changeset.
+  Harmless now (solo, plan-driven), but before external contributors or
+  parallel plan branches, Plan 09 should add `changeset status --verbose` (or
+  the `@changesets/action`) to the pipeline.
 
 ## Conventions established in Plan 01 (apply in later plans)
 
