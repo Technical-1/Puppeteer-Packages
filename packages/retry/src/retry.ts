@@ -84,7 +84,6 @@ export async function withRetry<T>(
   if (opts.signal?.aborted) throw new Error("Aborted before first attempt");
 
   let attempt = 0;
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     attempt += 1;
     try {
