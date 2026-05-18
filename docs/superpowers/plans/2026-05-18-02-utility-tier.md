@@ -542,6 +542,8 @@ describe("createConsoleLogger", () => {
     log.log("kept", "error");
     expect(spies.info).not.toHaveBeenCalled();
     expect(spies.error).toHaveBeenCalledWith("kept");
+    log.log("boundary", "warn");
+    expect(spies.warn).toHaveBeenCalledWith("boundary"); // level == minLevel → kept
   });
 });
 ```
@@ -569,9 +571,15 @@ describe("createEventLogger", () => {
     expect(handler).toHaveBeenCalledWith({ message: "bare", level: "info" });
   });
 
-  it("satisfies the core Logger shape (has a log method)", () => {
+  it("delivers each log to every subscribed listener", () => {
     const logger = createEventLogger();
-    expect(typeof logger.log).toBe("function");
+    const h1 = vi.fn();
+    const h2 = vi.fn();
+    logger.on("log", h1);
+    logger.on("log", h2);
+    logger.log("broadcast", "info");
+    expect(h1).toHaveBeenCalledWith({ message: "broadcast", level: "info" });
+    expect(h2).toHaveBeenCalledWith({ message: "broadcast", level: "info" });
   });
 });
 ```
@@ -632,6 +640,14 @@ export interface LogEvent {
  * Lets a host (e.g. an Electron renderer bridge) stream lines to a UI.
  */
 export class EventLogger extends EventEmitter implements Logger {
+  constructor() {
+    super();
+    // This logger exists to fan one stream out to many subscribers (e.g. an
+    // Electron UI bridge plus diagnostics). Disable Node's default
+    // maxListeners=10 warning — listener count is the host's concern.
+    this.setMaxListeners(0);
+  }
+
   log(message: string, level: LogLevel = "info"): void {
     const event: LogEvent = { message, level };
     this.emit("log", event);
