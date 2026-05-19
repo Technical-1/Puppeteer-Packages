@@ -268,8 +268,10 @@ what we learned. Plans below numbered in execution order.
 - `2026-05-19-03-browser-foundation.md` ← ✅ DONE, merged to `main` (Plan 03:
   `chrome-setup` + `launcher`, 6 pkgs / 65 tests; cemented the DI-mockable
   browser + bounded-peer + concurrency/cleanup conventions).
-- `2026-05-19-04-navigation-data.md` ← detailed, ready to execute (Plan 04:
-  `interaction-helpers` + `navigation` + `extract`; first consumers of the
-  DI-mockable browser pattern; `navigation` composes `@technical-1/retry`).
+- `2026-05-19-04-navigation-data.md` ← ✅ DONE, merged to `main` (Plan 04:
+  `interaction-helpers` + `navigation` + `extract`; 9 pkgs / 95 tests).
+- `2026-05-19-05-anti-detection.md` ← detailed, ready to execute (Plan 05:
+  `stealth` + `fingerprint` + `human` + `proxy`; introduces the
+  `puppeteer-extra` real-dependency exception).
 - Subsequent plans written iteratively after each predecessor is verified.
 - Template plans saved under `Puppeteer-Template/docs/superpowers/plans/`.
