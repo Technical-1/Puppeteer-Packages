@@ -167,6 +167,18 @@ what we learned. Plans below numbered in execution order.
   tolerant capability that imports NOTHING from core (e.g. `extract` —
   returns `""`/`[]`, no throws, no logger) has NO core dep at all. Never list
   an unused runtime dep for convention's sake.
+- **CJS `export =` deps under `verbatimModuleSyntax`.** A real dep that ships
+  a CJS `export = X` `.d.ts` (e.g. `puppeteer-extra-plugin-stealth`; likely the
+  2captcha adapter in Plan 08) CANNOT be `import Foo from "dep"` —
+  `verbatimModuleSyntax` overrides `esModuleInterop`'s synthetic default and
+  errors (TS1259). Use TypeScript import-equals: `import Foo = require("dep");`
+  (valid under NodeNext, emitted correctly for the ESM build). The matching
+  `vi.mock("dep", factory)` must return whatever `require("dep")` actually
+  yields for that package (for `export = function`, the module IS the
+  function — the factory returns the fn, not `{ default: fn }`); the
+  implementer verifies the spy is actually invoked and reports the exact
+  working form. Named-export CJS deps (e.g. `puppeteer-extra`'s `addExtra`)
+  import normally.
 - **Node typings come from root `@types/node`.** `@types/node` is a ROOT
   devDependency; with NodeNext + no explicit `types` array it is auto-included
   in every package. Packages using Node globals (`setTimeout`, `AbortSignal`,

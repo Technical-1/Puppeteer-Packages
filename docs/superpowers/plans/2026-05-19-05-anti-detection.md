@@ -197,7 +197,10 @@ describe("applyStealth", () => {
 
 ```ts
 import { addExtra } from "puppeteer-extra";
-import StealthPlugin from "puppeteer-extra-plugin-stealth";
+// puppeteer-extra-plugin-stealth ships CJS `export =`; under
+// verbatimModuleSyntax a default import (TS1259) fails — use import-equals
+// (roadmap "CJS export= deps" convention). `addExtra` is a named export → fine.
+import StealthPlugin = require("puppeteer-extra-plugin-stealth");
 
 /**
  * Wrap a puppeteer instance with `puppeteer-extra` and apply the stealth
@@ -210,7 +213,8 @@ export function applyStealth<T>(puppeteer: T): ReturnType<typeof addExtra> {
 }
 ```
 
-- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/stealth test` PASS (1 test); `pnpm --filter @technical-1/stealth typecheck` clean. `addExtra`/`StealthPlugin` ship their own types (real deps). The single `puppeteer as never` is the DI boundary cast for the generic instance into puppeteer-extra's `addExtra` signature — it is the minimal necessary boundary cast (puppeteer-extra types are loose); if typecheck fails differently, narrow using puppeteer-extra's exported type WITHOUT `as any`; report.
+- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/stealth test` PASS (1 test); `pnpm --filter @technical-1/stealth typecheck` clean. `addExtra`/`StealthPlugin` ship their own types (real deps). The single `puppeteer as never` is the minimal DI boundary cast (puppeteer-extra types are loose) — no `as any`.
+  **CJS interop (roadmap convention):** `import StealthPlugin = require("puppeteer-extra-plugin-stealth")` is required because the package is CJS `export =` and `verbatimModuleSyntax` rejects a default import. With this form, `StealthPlugin` IS the module's exported function (call it directly: `StealthPlugin()`). The Step-1 test's `vi.mock("puppeteer-extra-plugin-stealth", ...)` factory must therefore return whatever `require()` yields for an `export = function` package so that `StealthPlugin()` is callable and the spy is invoked — the implementer must determine the exact working factory shape EMPIRICALLY (try the factory returning the fn directly vs `{ default: fn }`; pick whichever makes `typecheck` AND the test's `expect(stealthPluginSpy).toHaveBeenCalled()` pass) and report the exact form used. Same for the Task 3 index.test.ts mock. If `import = require` triggers an eslint/lint rule, that rule is not enabled in our flat config (no dead-directive); if it genuinely errors, report rather than switching to `as any`.
 
 - [ ] **Step 5: Commit**
 
