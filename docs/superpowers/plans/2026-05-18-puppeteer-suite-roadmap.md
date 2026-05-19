@@ -106,6 +106,12 @@ what we learned. Plans below numbered in execution order.
   confirm or change this before the first `changeset publish`, and surface the
   decision as a comment in `release.yml` when that file is created so the
   executor cannot miss it.
+- **Pre-1.0 API-surface review.** Some internal types are reachable via
+  inherited option fields but not exported (e.g. `chrome-setup`'s
+  `PlatformName` via `EnsureChromeOptions.platform`). Before 1.0, Plan 09 (or a
+  dedicated pre-release pass) should decide per such type whether to export it
+  or keep the field's type structural. Not a defect — a deliberate surface
+  decision.
 - **Consumer `@types/node` requirement.** `@types/node` is a root devDep, not
   shipped per-package. Packages whose emitted `.d.ts` reference Node types
   (`node:events`, `process`, `node:fs`, etc. — logger/config/chrome-setup/…)
