@@ -169,10 +169,17 @@ git commit -m "chore(stealth): scaffold @technical-1/stealth"
 ```ts
 import { describe, it, expect, vi } from "vitest";
 
-const useSpy = vi.fn().mockReturnThis();
-const extraInstance = { use: useSpy };
-const addExtraSpy = vi.fn(() => extraInstance);
-const stealthPluginSpy = vi.fn(() => ({ name: "stealth" }));
+// Spies referenced in a vi.mock factory MUST be vi.hoisted() (vi.mock is
+// hoisted above const → TDZ otherwise). Roadmap convention.
+const { useSpy, extraInstance, addExtraSpy, stealthPluginSpy } = vi.hoisted(
+  () => {
+    const useSpy = vi.fn().mockReturnThis();
+    const extraInstance = { use: useSpy };
+    const addExtraSpy = vi.fn(() => extraInstance);
+    const stealthPluginSpy = vi.fn(() => ({ name: "stealth" }));
+    return { useSpy, extraInstance, addExtraSpy, stealthPluginSpy };
+  },
+);
 
 vi.mock("puppeteer-extra", () => ({ addExtra: addExtraSpy }));
 vi.mock("puppeteer-extra-plugin-stealth", () => ({ default: stealthPluginSpy }));
@@ -197,10 +204,12 @@ describe("applyStealth", () => {
 
 ```ts
 import { addExtra } from "puppeteer-extra";
-// puppeteer-extra-plugin-stealth ships CJS `export =`; under
-// verbatimModuleSyntax a default import (TS1259) fails — use import-equals
-// (roadmap "CJS export= deps" convention). `addExtra` is a named export → fine.
-import StealthPlugin = require("puppeteer-extra-plugin-stealth");
+// puppeteer-extra-plugin-stealth ships CJS `export =`. The DEFAULT import is
+// correct here: it typechecks (esModuleInterop:true + the package's .d.ts →
+// no TS1259) AND is the only form vi.mock can intercept. `import = require`
+// would compile to a sync require() that Vitest's mock registry can't see
+// (roadmap "CJS export= deps" convention). `addExtra` is a named export.
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
 
 /**
  * Wrap a puppeteer instance with `puppeteer-extra` and apply the stealth
@@ -214,7 +223,15 @@ export function applyStealth<T>(puppeteer: T): ReturnType<typeof addExtra> {
 ```
 
 - [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/stealth test` PASS (1 test); `pnpm --filter @technical-1/stealth typecheck` clean. `addExtra`/`StealthPlugin` ship their own types (real deps). The single `puppeteer as never` is the minimal DI boundary cast (puppeteer-extra types are loose) — no `as any`.
-  **CJS interop (roadmap convention):** `import StealthPlugin = require("puppeteer-extra-plugin-stealth")` is required because the package is CJS `export =` and `verbatimModuleSyntax` rejects a default import. With this form, `StealthPlugin` IS the module's exported function (call it directly: `StealthPlugin()`). The Step-1 test's `vi.mock("puppeteer-extra-plugin-stealth", ...)` factory must therefore return whatever `require()` yields for an `export = function` package so that `StealthPlugin()` is callable and the spy is invoked — the implementer must determine the exact working factory shape EMPIRICALLY (try the factory returning the fn directly vs `{ default: fn }`; pick whichever makes `typecheck` AND the test's `expect(stealthPluginSpy).toHaveBeenCalled()` pass) and report the exact form used. Same for the Task 3 index.test.ts mock. If `import = require` triggers an eslint/lint rule, that rule is not enabled in our flat config (no dead-directive); if it genuinely errors, report rather than switching to `as any`.
+  **CJS interop (empirically verified — roadmap convention):** use the DEFAULT
+  import `import StealthPlugin from "puppeteer-extra-plugin-stealth"`. It
+  typechecks here (`esModuleInterop:true` + the package's `.d.ts` → no TS1259)
+  and is the only form `vi.mock` can intercept. `import = require` is WRONG —
+  it compiles to a sync `require()` Vitest's mock registry can't see (spy = 0
+  calls). The matching mock is `vi.mock("puppeteer-extra-plugin-stealth", () =>
+  ({ default: stealthPluginSpy }))`, with the spies created via `vi.hoisted()`
+  (vi.mock hoists above `const` → TDZ). Task 3's index.test.ts uses an inline
+  `vi.fn()` in the factory (`{ default: vi.fn() }`) — no hoist needed there.
 
 - [ ] **Step 5: Commit**
 
