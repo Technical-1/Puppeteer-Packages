@@ -98,25 +98,30 @@ what we learned. Plans below numbered in execution order.
 
 ## Plan 09 release decisions to make deliberately
 
-- **Internal-dep range strategy.** `.changeset/config.json` has
-  `updateInternalDependencies: "patch"`, so on publish Changesets pins internal
-  `workspace:*` deps (e.g. `@technical-1/retry` → `@technical-1/core`) to an
-  exact resolved version, not a caret range. Consumers won't auto-satisfy a
-  newer `core` without an explicit dependent release. Plan 09 must consciously
-  confirm or change this before the first `changeset publish`, and surface the
-  decision as a comment in `release.yml` when that file is created so the
-  executor cannot miss it.
+- **Internal-dep range strategy.** Mechanics: `changeset version` does NOT
+  rewrite `workspace:*` entries (it only bumps `version` fields); the
+  `workspace:*` → concrete-version rewrite happens at `pnpm publish` time, and
+  with the current setup pnpm pins to the EXACT resolved version (not a caret).
+  `.changeset/config.json`'s `updateInternalDependencies: "patch"` is inert for
+  an all-`workspace:*` graph where every package has its own changeset (it only
+  cascades into dependents that lack their own changeset). Net effect: a
+  consumer won't auto-satisfy a newer `core` without an explicit dependent
+  release. Plan 09 must consciously confirm or change this (e.g. `workspace:^`)
+  before the first `changeset publish`, and surface the decision as a comment
+  in `release.yml`.
 - **`navigation.goto` return type (pre-1.0 consideration).** `goto` returns
   `void` and deliberately does NOT treat HTTP 4xx/5xx as a navigation failure
   (documented contract — many valid uses scrape error pages). A pre-1.0 review
   should decide whether `goto` should return `HTTPResponse | null` so callers
   can gate on status without `goto` imposing policy. Not a defect — a conscious
   surface decision deferred.
-- **Pre-1.0 API-surface review.** Some internal types are reachable via
-  inherited option fields but not exported (e.g. `chrome-setup`'s
-  `PlatformName` via `EnsureChromeOptions.platform`). Before 1.0, Plan 09 (or a
-  dedicated pre-release pass) should decide per such type whether to export it
-  or keep the field's type structural. Not a defect — a deliberate surface
+- **Pre-1.0 API-surface review.** Some types are reachable via option fields
+  but not re-exported from their package barrel. Examples: `chrome-setup`'s
+  `PlatformName` via `EnsureChromeOptions.platform`; `@technical-1/retry`'s
+  `RetryOptions` via `navigation`'s `GotoOptions.retry` (a consumer must
+  import `RetryOptions` from `@technical-1/retry` directly). Before 1.0, Plan
+  09 (or a dedicated pre-release pass) decides per type whether to re-export it
+  or keep the cross-package import deliberate. Not a defect — a surface
   decision.
 - **Consumer `@types/node` requirement.** `@types/node` is a root devDep, not
   shipped per-package. Packages whose emitted `.d.ts` reference Node types
