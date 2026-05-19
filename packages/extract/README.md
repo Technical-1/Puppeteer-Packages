@@ -3,6 +3,7 @@
 Structured DOM extraction. Tolerant by design: list/table helpers return empty
 collections (not throws) when nothing matches; schema extraction yields `""`
 for absent fields. Uses `page.evaluate` under the hood. You inject the `Page`.
+Infrastructure errors (a `page.evaluate` rejection from frame detachment, navigation, or a target crash) propagate as exceptions — the tolerant contract covers missing DOM nodes only, not page failures.
 
 ```ts
 import { extractAll, extractTable, extractSchema } from "@technical-1/extract";

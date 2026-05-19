@@ -51,6 +51,11 @@ describe("extractTable", () => {
       ["3", "4"],
     ]);
   });
+
+  it("returns [] when the table/selector is absent (tolerant)", async () => {
+    const page = mockPage({ evaluate: vi.fn().mockResolvedValue([]) });
+    expect(await extractTable(page, "table#missing")).toEqual([]);
+  });
 });
 
 describe("extractSchema", () => {
@@ -62,5 +67,12 @@ describe("extractSchema", () => {
     const page = mockPage({ evaluate });
     const row = await extractSchema(page, { name: ".name", price: ".price" });
     expect(row).toEqual({ name: "Widget", price: "" });
+  });
+
+  it("returns {} for an empty schema with zero page round-trips", async () => {
+    const evaluate = vi.fn();
+    const page = mockPage({ evaluate });
+    expect(await extractSchema(page, {})).toEqual({});
+    expect(evaluate).not.toHaveBeenCalled();
   });
 });

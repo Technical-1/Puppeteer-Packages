@@ -12,7 +12,7 @@ declare var document: {
   querySelectorAll(s: string): Iterable<InPageElement>;
 };
 
-/** Trimmed textContent of the first match, or "" if absent. */
+/** Trimmed textContent of the first match; "" if absent OR textContent is null/empty. */
 export async function extractText(page: Page, selector: string): Promise<string> {
   const text = await page.evaluate((sel: string) => {
     const el = document.querySelector(sel);
@@ -30,7 +30,14 @@ export async function extractAll(page: Page, selector: string): Promise<string[]
   return texts.map((t) => t.trim());
 }
 
-/** Rows × cells of trimmed text from the first matching table. */
+/**
+ * Rows × cells of trimmed text from the first matching table. `[]` if absent.
+ *
+ * v1 limitation: uses `querySelectorAll("tr")`, which also matches rows of any
+ * nested `<table>` inside a cell (and that cell's text concatenates nested
+ * text). Defined behavior for FLAT tables only; nested-table results are
+ * undefined in v1.
+ */
 export async function extractTable(
   page: Page,
   selector: string,
@@ -49,7 +56,11 @@ export async function extractTable(
 
 export type ExtractSchema = Record<string, string>;
 
-/** Map each field's selector to its trimmed text ("" when the node is absent). */
+/**
+ * Map each field's selector to its trimmed text ("" when the node is absent).
+ * Performs N sequential `extractText` (one `page.evaluate` round-trip per
+ * field); batch via a single `page.evaluate` if a large schema is perf-critical.
+ */
 export async function extractSchema(
   page: Page,
   schema: ExtractSchema,
