@@ -194,6 +194,14 @@ what we learned. Plans below numbered in execution order.
   `">=22 <25"` since the devDep validates v24). An open-ended `>=N` silently
   admits an unvalidated semver-major for consumers. Widen the cap only in a
   change that explicitly validates the new major.
+- **A capability wrapping an external op in `withRetry` defaults
+  `isRetryable: () => true`.** Raw `puppeteer-core`/network errors have no
+  `.retryable` property, so `withRetry`'s `defaultIsRetryable`
+  (`err.retryable === true`) would NEVER retry them — making the wrapper's
+  `retry` option useless. Pass `{ ..., isRetryable: () => true, ...opts.retry }`
+  (the caller's `opts.retry` spread LAST so it can override). The retry COUNT
+  bounds attempts; terminal-ness is expressed by exhaustion → a wrapped typed
+  `core` error. (Established by `navigation.goto`.)
 - **Wrap external/library errors crossing a package boundary in a core
   error with an explicit `retryable`.** A raw error thrown by `puppeteer-core`,
   `@puppeteer/browsers`, `fs`, the network, etc. has no `.retryable`, so
