@@ -852,7 +852,7 @@ export async function extractSchema(
 }
 ```
 
-- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/extract test` PASS (7 tests); `pnpm --filter @technical-1/extract typecheck` clean. `document` in the `page.evaluate` callbacks is typed by the module-scoped `declare var`/`InPageElement` block at the top of `extract.ts` (roadmap convention; do NOT add `DOM` to tsconfig, do NOT `as any`). `schema[key]` is guarded by an explicit `undefined` check (no `as` cast) for `noUncheckedIndexedAccess`. If the minimal `InPageElement` shape is insufficient for the actual callback usage, extend it minimally (still no DOM lib) and report what you added.
+- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/extract test` PASS (6 tests; code review later adds 2 contract tests — extractTable→[], extractSchema({})→{} — for 8 total, commit `7dfa9da`); `pnpm --filter @technical-1/extract typecheck` clean. `document` in the `page.evaluate` callbacks is typed by the module-scoped `declare var`/`InPageElement` block at the top of `extract.ts` (roadmap convention; do NOT add `DOM` to tsconfig, do NOT `as any`). `schema[key]` is guarded by an explicit `undefined` check (no `as` cast) for `noUncheckedIndexedAccess`. If the minimal `InPageElement` shape is insufficient for the actual callback usage, extend it minimally (still no DOM lib) and report what you added.
 
 - [ ] **Step 5: Commit**
 
@@ -900,7 +900,7 @@ export {
 export type { ExtractSchema } from "./extract.js";
 ```
 
-- [ ] **Step 4:** `pnpm --filter @technical-1/extract test` PASS (8 tests); typecheck + build clean.
+- [ ] **Step 4:** `pnpm --filter @technical-1/extract test` PASS (9 tests: 8 extract + 1 index); typecheck + build clean.
 
 - [ ] **Step 5:** `ls packages/extract/dist/index.js packages/extract/dist/index.cjs packages/extract/dist/index.d.ts packages/extract/dist/index.d.cts` → all four.
 
@@ -936,8 +936,8 @@ All declare `puppeteer-core` as a peer.
 - [ ] **Step 2: Whole-monorepo CI gate** — `pnpm install && pnpm run ci` → ALL
   9 packages green. Capture turbo summary + per-package counts (core 13,
   retry 10, logger 7, config 9, chrome-setup 12, launcher 14,
-  interaction-helpers 13, navigation 8, extract 8 = 94 — interaction-helpers
-  +4 and navigation +4 from code-review hardening). `pnpm run lint` → ZERO
+  interaction-helpers 13, navigation 8, extract 9 = 95 — interaction-helpers
+  +4, navigation +4, extract +2 from code-review hardening). `pnpm run lint` → ZERO
   warnings/errors. If anything fails, STOP and report (don't mask).
 
 - [ ] **Step 3: Invariant sweep** — `grep -rn "autom8ops" packages/ docs/ .changeset/ .github/ 2>/dev/null | grep -v node_modules || echo "clean"` → `clean`.
