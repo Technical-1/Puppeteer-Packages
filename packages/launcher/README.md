@@ -15,5 +15,6 @@ await withBrowser(puppeteer, { executablePath }, async (browser) => {
 });
 ```
 
-`launch` / `withBrowser` (closes the browser in a `finally`, even on throw) /
+`launch` / `withBrowser` (guaranteed cleanup: the browser is closed on every
+exit path, and a close failure never masks the callback error or result) /
 `BrowserPool` (fixed-size, lazily created, `drain()` closes everything).
