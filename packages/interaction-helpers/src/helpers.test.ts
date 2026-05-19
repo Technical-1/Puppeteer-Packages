@@ -28,12 +28,41 @@ describe("safeClick", () => {
     const page = mockPage({
       waitForSelector: vi.fn().mockRejectedValue(new Error("timeout")),
     });
-    await expect(safeClick(page, "#missing")).rejects.toBeInstanceOf(
-      SelectorNotFoundError,
+    const err = await safeClick(page, "#missing").catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(SelectorNotFoundError);
+    expect(err).toMatchObject({ selector: "#missing", retryable: false });
+  });
+
+  it("preserves the original error as cause (Issue 2)", async () => {
+    const inner = new Error("timeout");
+    const page = mockPage({ waitForSelector: vi.fn().mockRejectedValue(inner) });
+    const err = await safeClick(page, "#x").catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(SelectorNotFoundError);
+    expect((err as { cause?: unknown }).cause).toBe(inner);
+  });
+
+  it("does NOT wrap a click() failure as SelectorNotFoundError (Issue 3)", async () => {
+    const clickError = new Error("click failed");
+    const page = mockPage({ click: vi.fn().mockRejectedValue(clickError) });
+    await expect(safeClick(page, "#btn")).rejects.toBe(clickError);
+    const err = await safeClick(page, "#btn").catch((e: unknown) => e);
+    expect(err).not.toBeInstanceOf(SelectorNotFoundError);
+  });
+
+  it("passes DEFAULT_TIMEOUT (15000) when no timeout opt is given (Issue 4)", async () => {
+    const page = mockPage();
+    await safeClick(page, "#btn");
+    expect(page.waitForSelector).toHaveBeenCalledWith(
+      "#btn",
+      expect.objectContaining({ timeout: 15000 }),
     );
-    await expect(safeClick(page, "#missing")).rejects.toMatchObject({
-      selector: "#missing",
-    });
+  });
+
+  it("logs at step level via the injected logger (Issue 5)", async () => {
+    const logger = { log: vi.fn() };
+    const page = mockPage();
+    await safeClick(page, "#btn", { logger });
+    expect(logger.log).toHaveBeenCalledWith("click #btn", "step");
   });
 });
 

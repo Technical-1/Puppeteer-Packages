@@ -58,7 +58,12 @@ export async function safeType(
   await page.type(selector, text, { delay: opts.delay ?? 0 });
 }
 
-/** Wait for a visible selector, return its trimmed textContent. */
+/**
+ * Wait for a visible selector, return its trimmed textContent. Presence is
+ * already guaranteed by the visibility wait — a `""` result means the element
+ * exists but has no text, NOT that it is absent (don't use the return value
+ * for presence checks).
+ */
 export async function waitAndGet(
   page: Page,
   selector: string,
