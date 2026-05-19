@@ -118,6 +118,10 @@ what we learned. Plans below numbered in execution order.
   require the consumer's project to have `@types/node`. Plan 09 must decide how
   to communicate this (README "Requirements" note and/or a `peerDependencies`
   entry) before first publish.
+- **Confirm npm org/scope before first publish.** Plan 09 must verify the
+  `@technical-1` npm scope/org exists and the auth token has publish access at
+  the right tier (scoped public publish) BEFORE the first `changeset publish`
+  — add this as an explicit pre-publish checklist item in `release.yml`.
 - **CI changeset-status guard.** No CI job verifies a PR includes a changeset.
   Harmless now (solo, plan-driven), but before external contributors or
   parallel plan branches, Plan 09 should add `changeset status --verbose` (or
