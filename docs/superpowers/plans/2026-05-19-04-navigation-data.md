@@ -271,6 +271,18 @@ import type { Page } from "puppeteer-core";
 import { SelectorNotFoundError } from "@technical-1/core";
 import type { LoggerOption, TimeoutOption } from "@technical-1/core";
 
+// Minimal browser-global declarations for in-page evaluate callbacks (roadmap
+// convention). Module-scoped (this file is a module — no global leak); NOT the
+// DOM lib, NOT @types. Declare only what the callbacks below actually use.
+declare var document: {
+  querySelector(s: string): { textContent: string | null } | null;
+  body: { scrollHeight: number };
+};
+declare var window: {
+  scrollBy(x: number, y: number): void;
+  scrollTo(x: number, y: number): void;
+};
+
 const DEFAULT_TIMEOUT = 15000;
 
 export interface InteractionOptions extends LoggerOption, TimeoutOption {}
@@ -343,7 +355,7 @@ export async function scroll(page: Page, opts: ScrollOptions = {}): Promise<void
 }
 ```
 
-- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/interaction-helpers test` PASS (8 tests); `pnpm --filter @technical-1/interaction-helpers typecheck` clean. The `page.evaluate` callbacks reference `document`/`window`; puppeteer-core's `evaluate` generic provides the in-page browser scope for these — they do NOT require the TS `DOM` lib. If they are genuinely flagged, do NOT add `DOM` to tsconfig and do NOT `as any`; report the exact error (the expected resolution is via puppeteer-core's bundled lib references).
+- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/interaction-helpers test` PASS (8 tests); `pnpm --filter @technical-1/interaction-helpers typecheck` clean. `document`/`window` in the `page.evaluate` callbacks are typed by the module-scoped `declare var` block at the top of `helpers.ts` (roadmap convention — puppeteer-core's `evaluate` generic does NOT supply them; do NOT add `DOM` to tsconfig, do NOT `as any`).
 
 - [ ] **Step 5: Commit**
 
@@ -771,6 +783,18 @@ describe("extractSchema", () => {
 ```ts
 import type { Page } from "puppeteer-core";
 
+// Minimal browser-global declarations for in-page evaluate callbacks (roadmap
+// convention). Module-scoped; NOT the DOM lib, NOT @types. Declare only what
+// the callbacks below use.
+interface InPageElement {
+  textContent: string | null;
+  querySelectorAll(s: string): Iterable<InPageElement>;
+}
+declare var document: {
+  querySelector(s: string): InPageElement | null;
+  querySelectorAll(s: string): Iterable<InPageElement>;
+};
+
 /** Trimmed textContent of the first match, or "" if absent. */
 export async function extractText(page: Page, selector: string): Promise<string> {
   const text = await page.evaluate((sel: string) => {
@@ -823,7 +847,7 @@ export async function extractSchema(
 }
 ```
 
-- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/extract test` PASS (7 tests); `pnpm --filter @technical-1/extract typecheck` clean. The `page.evaluate` callbacks reference `document` — provided by puppeteer-core's evaluate generic in-page scope, NOT the TS `DOM` lib; do NOT add `DOM` to tsconfig, do NOT `as any`. `schema[key]` is guarded by an explicit `undefined` check (no `as` cast) for `noUncheckedIndexedAccess`. If `page.evaluate`'s generic return typing needs annotation, annotate the callback return WITHOUT `as any`; report the change.
+- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/extract test` PASS (7 tests); `pnpm --filter @technical-1/extract typecheck` clean. `document` in the `page.evaluate` callbacks is typed by the module-scoped `declare var`/`InPageElement` block at the top of `extract.ts` (roadmap convention; do NOT add `DOM` to tsconfig, do NOT `as any`). `schema[key]` is guarded by an explicit `undefined` check (no `as` cast) for `noUncheckedIndexedAccess`. If the minimal `InPageElement` shape is insufficient for the actual callback usage, extend it minimally (still no DOM lib) and report what you added.
 
 - [ ] **Step 5: Commit**
 

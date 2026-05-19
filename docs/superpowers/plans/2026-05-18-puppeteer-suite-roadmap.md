@@ -159,6 +159,15 @@ what we learned. Plans below numbered in execution order.
   — never drain timers before the `.rejects` handler is attached, and never
   use `dangerouslyIgnoreUnhandledErrors` (it masks the bug). Resolve-path
   tests can `await vi.runAllTimersAsync()` then `await expect(p).resolves`.
+- **Type in-page `evaluate` callbacks with module-scoped `declare var`.**
+  `puppeteer-core`'s `evaluate` generic does NOT supply `document`/`window`
+  typing, and the base `lib` is `["ES2022"]` (no DOM, deliberately). A src
+  file containing `page.evaluate(() => …document…)` declares ONLY the in-page
+  globals its callbacks actually use via module-scoped `declare var document
+  {…}` / `declare var window {…}` at the top of the file (the file is a module
+  — these do NOT leak globally; NOT DOM lib, NOT `@types`). Keep the declared
+  shape minimal and accurate to the callback's usage. (Established by
+  `interaction-helpers/src/helpers.ts`.)
 - **DI-mockable browser pattern (template for all browser-driving packages).**
   A package that drives a browser declares `puppeteer-core` as a bounded peer,
   imports ONLY its types (`import type { Browser, ... }`), and accepts the
