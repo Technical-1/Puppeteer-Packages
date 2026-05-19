@@ -228,8 +228,11 @@ what we learned. Plans below numbered in execution order.
   (Plan 01: monorepo + `@technical-1/core`, 13 tests, dual build verified).
 - `2026-05-18-02-utility-tier.md` ← ✅ DONE, merged to `main` (Plan 02:
   `retry`/`logger`/`config`, 26 tests added, 39 monorepo total).
-- `2026-05-19-03-browser-foundation.md` ← detailed, ready to execute (Plan 03:
-  `chrome-setup` + `launcher`; introduces the `puppeteer-core` peer +
-  DI-mockable-browser convention and the `@puppeteer/browsers` exception).
+- `2026-05-19-03-browser-foundation.md` ← ✅ DONE, merged to `main` (Plan 03:
+  `chrome-setup` + `launcher`, 6 pkgs / 65 tests; cemented the DI-mockable
+  browser + bounded-peer + concurrency/cleanup conventions).
+- `2026-05-19-04-navigation-data.md` ← detailed, ready to execute (Plan 04:
+  `interaction-helpers` + `navigation` + `extract`; first consumers of the
+  DI-mockable browser pattern; `navigation` composes `@technical-1/retry`).
 - Subsequent plans written iteratively after each predecessor is verified.
 - Template plans saved under `Puppeteer-Template/docs/superpowers/plans/`.
