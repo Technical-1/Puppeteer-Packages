@@ -106,6 +106,12 @@ what we learned. Plans below numbered in execution order.
   confirm or change this before the first `changeset publish`, and surface the
   decision as a comment in `release.yml` when that file is created so the
   executor cannot miss it.
+- **`navigation.goto` return type (pre-1.0 consideration).** `goto` returns
+  `void` and deliberately does NOT treat HTTP 4xx/5xx as a navigation failure
+  (documented contract — many valid uses scrape error pages). A pre-1.0 review
+  should decide whether `goto` should return `HTTPResponse | null` so callers
+  can gate on status without `goto` imposing policy. Not a defect — a conscious
+  surface decision deferred.
 - **Pre-1.0 API-surface review.** Some internal types are reachable via
   inherited option fields but not exported (e.g. `chrome-setup`'s
   `PlatformName` via `EnsureChromeOptions.platform`). Before 1.0, Plan 09 (or a

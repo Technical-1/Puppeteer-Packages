@@ -599,7 +599,7 @@ export async function waitForNetworkIdle(
 }
 ```
 
-- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/navigation test` PASS (4 tests — 3 goto + 1 waitForNetworkIdle, no noise — `retry` uses `minDelayMs:0` so no fake timers needed); `pnpm --filter @technical-1/navigation typecheck` clean. `RetryOptions` imported as `import { withRetry, type RetryOptions }` (verbatimModuleSyntax-correct). If `page.goto`'s `waitUntil` union or `page.waitForNetworkIdle`'s options mismatch puppeteer-core's types, narrow with the exact puppeteer-core type WITHOUT `as any`; report the change.
+- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/navigation test` PASS (4 tests — 3 goto + 1 waitForNetworkIdle; code review later adds 3 + enhances 1 → 7 total, commit `f4ba3f2`, no noise — `retry` uses `minDelayMs:0` so no fake timers needed); `pnpm --filter @technical-1/navigation typecheck` clean. `RetryOptions` imported as `import { withRetry, type RetryOptions }` (verbatimModuleSyntax-correct). If `page.goto`'s `waitUntil` union or `page.waitForNetworkIdle`'s options mismatch puppeteer-core's types, narrow with the exact puppeteer-core type WITHOUT `as any`; report the change.
 
 - [ ] **Step 5: Commit**
 
@@ -644,7 +644,7 @@ export type {
 } from "./navigation.js";
 ```
 
-- [ ] **Step 4:** `pnpm --filter @technical-1/navigation test` PASS (5 tests: 4 navigation + 1 index); typecheck + build clean.
+- [ ] **Step 4:** `pnpm --filter @technical-1/navigation test` PASS (8 tests: 7 navigation + 1 index); typecheck + build clean.
 
 - [ ] **Step 5:** `ls packages/navigation/dist/index.js packages/navigation/dist/index.cjs packages/navigation/dist/index.d.ts packages/navigation/dist/index.d.cts` → all four.
 
@@ -934,9 +934,8 @@ All declare `puppeteer-core` as a peer.
 - [ ] **Step 2: Whole-monorepo CI gate** — `pnpm install && pnpm run ci` → ALL
   9 packages green. Capture turbo summary + per-package counts (core 13,
   retry 10, logger 7, config 9, chrome-setup 12, launcher 14,
-  interaction-helpers 13, navigation 5, extract 8 = 91 — interaction-helpers
-  +4 from code-review hardening; navigation 5 = 4 impl + 1 surface).
-  `pnpm run lint` → ZERO
+  interaction-helpers 13, navigation 8, extract 8 = 94 — interaction-helpers
+  +4 and navigation +4 from code-review hardening). `pnpm run lint` → ZERO
   warnings/errors. If anything fails, STOP and report (don't mask).
 
 - [ ] **Step 3: Invariant sweep** — `grep -rn "autom8ops" packages/ docs/ .changeset/ .github/ 2>/dev/null | grep -v node_modules || echo "clean"` → `clean`.
