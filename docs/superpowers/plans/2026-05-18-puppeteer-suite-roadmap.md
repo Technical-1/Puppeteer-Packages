@@ -155,6 +155,26 @@ what we learned. Plans below numbered in execution order.
   — never drain timers before the `.rejects` handler is attached, and never
   use `dangerouslyIgnoreUnhandledErrors` (it masks the bug). Resolve-path
   tests can `await vi.runAllTimersAsync()` then `await expect(p).resolves`.
+- **DI-mockable browser pattern (template for all browser-driving packages).**
+  A package that drives a browser declares `puppeteer-core` as a bounded peer,
+  imports ONLY its types (`import type { Browser, ... }`), and accepts the
+  puppeteer instance / `Browser` / `Page` by dependency injection (function
+  param). Unit tests inject plain object mocks (`{ launch: vi.fn() }`,
+  `{ close: vi.fn() }`) — never real Chrome, never `vi.mock` of
+  `puppeteer-core`, never network (spec §9). `src/` carries zero `any`/`as`;
+  test mocks may use `as never` at the injection boundary only.
+- **Resource-cleanup contract.** A wrapper that owns a browser/page/resource
+  closes it on EVERY exit path; the close runs through a quiet helper that
+  logs (never throws) so a close failure can neither mask a thrown
+  caller error nor discard a successful result (spec §8). (Established by
+  `launcher.withBrowser`/`closeQuietly`.)
+- **Concurrency primitives reserve synchronously; settle waiters on teardown.**
+  Any pool/limiter must reserve its slot SYNCHRONOUSLY before the first
+  `await` (no check-then-await TOCTOU — that breaks the bound under
+  concurrency), roll the reservation back on launch failure, reject (not
+  abandon) queued waiters on `drain()`, and use `Promise.allSettled` +
+  `AggregateError` for teardown so one failure never leaks the rest.
+  `drain()` is forced-kill (documented); foreign/double-release is ignored.
 - **Bound peer-dependency ranges to the validated major.** A peer
   (`puppeteer-core` on `launcher`, and any future peer) must be range-capped to
   the highest major the package is actually built/tested against (e.g.

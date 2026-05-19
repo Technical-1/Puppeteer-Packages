@@ -784,6 +784,19 @@ git add packages/launcher/src/launcher.ts packages/launcher/src/pool.ts packages
 git commit -m "feat(launcher): launch + withBrowser (finally-close) + BrowserPool"
 ```
 
+> **Post-review redesign (commit `e2d14c6`).** Code review found the pool
+> design above had a TOCTOU over-launch race, deadlock paths (launch-failure
+> slot leak; `drain()` discarding waiters), `Promise.all` teardown leak, and
+> `withBrowser` masking `fn` errors with `close()` errors. The shipped
+> `pool.ts`/`launcher.ts` are the corrected versions: synchronous slot
+> reservation with rollback + `#serveNextWaiter`, `drain()` rejects waiters
+> and uses `Promise.allSettled`+`AggregateError`, `withBrowser` closes via a
+> quiet helper that logs (never masks/throws), foreign/double-release guard,
+> drain-during-launch leak guard. Tests grew 7→13. The corrected design IS the
+> template for the ~12 remaining browser-driving packages — see the roadmap
+> "DI-mockable browser pattern", "Resource-cleanup contract", and "Concurrency
+> primitives reserve synchronously" conventions.
+
 ---
 
 ### Task 6: `@technical-1/launcher` public surface + build
@@ -854,9 +867,9 @@ fixed-size `BrowserPool`. `puppeteer-core` is a peer dependency of `launcher`.
 Run: `pnpm install && pnpm run ci`
 Expected: all 6 packages green (`core`, `retry`, `logger`, `config`,
 `chrome-setup`, `launcher`). Capture the turbo summary + per-package test
-counts (core 13, retry 10, logger 7, config 9, chrome-setup 12, launcher 8 =
-59 — chrome-setup grew from code-review hardening: macOS .app descent,
-first-dir-wins, logger, platform-undetected, retryable-install-error tests).
+counts (core 13, retry 10, logger 7, config 9, chrome-setup 12, launcher 14 =
+65 — chrome-setup +5 and launcher +6 from code-review hardening; launcher's
+pool was redesigned for concurrency-safety, see Task 5 note).
 Run: `pnpm run lint` → ZERO warnings/errors monorepo-wide.
 
 - [ ] **Step 3: Invariant sweep**
