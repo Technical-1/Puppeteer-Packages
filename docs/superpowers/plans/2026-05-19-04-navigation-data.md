@@ -355,7 +355,7 @@ export async function scroll(page: Page, opts: ScrollOptions = {}): Promise<void
 }
 ```
 
-- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/interaction-helpers test` PASS (8 tests); `pnpm --filter @technical-1/interaction-helpers typecheck` clean. `document`/`window` in the `page.evaluate` callbacks are typed by the module-scoped `declare var` block at the top of `helpers.ts` (roadmap convention — puppeteer-core's `evaluate` generic does NOT supply them; do NOT add `DOM` to tsconfig, do NOT `as any`).
+- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/interaction-helpers test` PASS (8 tests; code review later adds 4 more — cause-chain, click-not-wrapped, default-timeout, logger-at-step — for 12 total, commit `7d30510`); `pnpm --filter @technical-1/interaction-helpers typecheck` clean. `document`/`window` in the `page.evaluate` callbacks are typed by the module-scoped `declare var` block at the top of `helpers.ts` (roadmap convention — puppeteer-core's `evaluate` generic does NOT supply them; do NOT add `DOM` to tsconfig, do NOT `as any`).
 
 - [ ] **Step 5: Commit**
 
@@ -931,7 +931,8 @@ All declare `puppeteer-core` as a peer.
 - [ ] **Step 2: Whole-monorepo CI gate** — `pnpm install && pnpm run ci` → ALL
   9 packages green. Capture turbo summary + per-package counts (core 13,
   retry 10, logger 7, config 9, chrome-setup 12, launcher 14,
-  interaction-helpers 9, navigation 6, extract 8 = 88). `pnpm run lint` → ZERO
+  interaction-helpers 13, navigation 6, extract 8 = 92 — interaction-helpers
+  grew +4 from code-review test hardening). `pnpm run lint` → ZERO
   warnings/errors. If anything fails, STOP and report (don't mask).
 
 - [ ] **Step 3: Invariant sweep** — `grep -rn "autom8ops" packages/ docs/ .changeset/ .github/ 2>/dev/null | grep -v node_modules || echo "clean"` → `clean`.
