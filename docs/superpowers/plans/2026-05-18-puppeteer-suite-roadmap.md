@@ -106,6 +106,12 @@ what we learned. Plans below numbered in execution order.
   confirm or change this before the first `changeset publish`, and surface the
   decision as a comment in `release.yml` when that file is created so the
   executor cannot miss it.
+- **Consumer `@types/node` requirement.** `@types/node` is a root devDep, not
+  shipped per-package. Packages whose emitted `.d.ts` reference Node types
+  (`node:events`, `process`, `node:fs`, etc. — logger/config/chrome-setup/…)
+  require the consumer's project to have `@types/node`. Plan 09 must decide how
+  to communicate this (README "Requirements" note and/or a `peerDependencies`
+  entry) before first publish.
 - **CI changeset-status guard.** No CI job verifies a PR includes a changeset.
   Harmless now (solo, plan-driven), but before external contributors or
   parallel plan branches, Plan 09 should add `changeset status --verbose` (or
