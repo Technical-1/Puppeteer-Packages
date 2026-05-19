@@ -35,11 +35,39 @@ describe("goto", () => {
   it("wraps a terminal navigation failure in NavigationError (url + cause)", async () => {
     const cause = new Error("net::ERR_NAME_NOT_RESOLVED");
     const page = mockPage({ goto: vi.fn().mockRejectedValue(cause) });
+    const err = await goto(page, "https://bad.test", {
+      retry: { retries: 1, minDelayMs: 0, jitter: false },
+    }).catch((e: unknown) => e);
+    expect(err).toMatchObject({ name: "NavigationError", url: "https://bad.test" });
+    expect((err as { cause?: unknown }).cause).toBe(cause);
+  });
+
+  it("applies default waitUntil 'load' and timeout 30000 when omitted", async () => {
+    const page = mockPage();
+    await goto(page, "https://x.test");
+    expect(page.goto).toHaveBeenCalledWith(
+      "https://x.test",
+      expect.objectContaining({ waitUntil: "load", timeout: 30000 }),
+    );
+  });
+
+  it("logs 'navigating to' at step and 'loaded' at success via the injected logger", async () => {
+    const log = vi.fn();
+    const page = mockPage();
+    await goto(page, "https://x.test", { logger: { log } });
+    expect(log).toHaveBeenCalledWith("navigating to https://x.test", "step");
+    expect(log).toHaveBeenCalledWith("loaded https://x.test", "success");
+  });
+
+  it("lets the caller override isRetryable via opts.retry (terminal immediately)", async () => {
+    const gotoMock = vi.fn().mockRejectedValue(new Error("net::ERR_FAILED"));
+    const page = mockPage({ goto: gotoMock });
     await expect(
-      goto(page, "https://bad.test", {
-        retry: { retries: 1, minDelayMs: 0, jitter: false },
+      goto(page, "https://x.test", {
+        retry: { retries: 5, minDelayMs: 0, jitter: false, isRetryable: () => false },
       }),
-    ).rejects.toMatchObject({ name: "NavigationError", url: "https://bad.test" });
+    ).rejects.toMatchObject({ name: "NavigationError" });
+    expect(gotoMock).toHaveBeenCalledTimes(1); // not retried — caller override won
   });
 });
 

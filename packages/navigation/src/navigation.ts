@@ -19,9 +19,18 @@ export interface GotoOptions extends LoggerOption {
 }
 
 /**
- * Navigate `page` to `url` with retry/backoff. A failure that survives all
- * retries is rethrown as a `core` `NavigationError` carrying the url + cause
- * (retryable by default — a caller may wrap `goto` in an outer policy).
+ * Navigate `page` to `url` with retry/backoff.
+ *
+ * Contract: "navigated" means `page.goto` did not network-error (DNS,
+ * timeout, connection refused). An HTTP 4xx/5xx response does NOT fail
+ * navigation — Puppeteer resolves on any received response. If you need to
+ * gate on HTTP status, inspect the page after `goto` returns.
+ *
+ * A failure that survives all retries is rethrown as a `core`
+ * `NavigationError` carrying the url + cause. That `NavigationError` has
+ * `retryable: true`, so a caller wrapping `goto` in an OUTER retry policy
+ * will re-attempt (outer × inner total attempts) — pass a terminal outer
+ * policy if that is not desired.
  */
 export async function goto(
   page: Page,
