@@ -59,6 +59,12 @@ importers:
         specifier: ^24.4.0
         version: 24.43.1
 
+  packages/fingerprint:
+    devDependencies:
+      puppeteer-core:
+        specifier: ^24.4.0
+        version: 24.43.1
+
   packages/interaction-helpers:
     dependencies:
       '@technical-1/core':
