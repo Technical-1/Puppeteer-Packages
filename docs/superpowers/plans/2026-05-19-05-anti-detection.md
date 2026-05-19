@@ -394,7 +394,7 @@ describe("applyFingerprint", () => {
       timezoneId: "America/New_York",
     };
     await applyFingerprint(page, fp);
-    expect(page.setUserAgent).toHaveBeenCalledWith("UA/1.0");
+    expect(page.setUserAgent).toHaveBeenCalledWith({ userAgent: "UA/1.0" });
     expect(page.setViewport).toHaveBeenCalledWith({ width: 1280, height: 800 });
     expect(page.emulateTimezone).toHaveBeenCalledWith("America/New_York");
     expect(page.setExtraHTTPHeaders).toHaveBeenCalledWith({
@@ -460,7 +460,8 @@ export async function applyFingerprint(
   page: Page,
   fp: Fingerprint,
 ): Promise<void> {
-  await page.setUserAgent(fp.userAgent);
+  // object form — the string overload is @deprecated in puppeteer-core 24.x
+  await page.setUserAgent({ userAgent: fp.userAgent });
   await page.setViewport(fp.viewport);
   await page.emulateTimezone(fp.timezoneId);
   await page.setExtraHTTPHeaders({ "Accept-Language": fp.locale });
