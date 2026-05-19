@@ -9,7 +9,7 @@ import { PptrKitError } from "@technical-1/core";
 import type { LoggerOption } from "@technical-1/core";
 
 /** Pinned Chrome-for-Testing build used when downloading. */
-export const DEFAULT_CHROME_BUILD = "131.0.6778.108";
+export const DEFAULT_CHROME_BUILD = "144.0.7559.96";
 
 type PlatformName = NodeJS.Platform | "linux" | "darwin" | "win32";
 
@@ -54,7 +54,12 @@ export interface ResolveChromeOptions {
   /** Directories to search (recursively). Default: `<cwd>/chrome-local`, the
    *  Puppeteer cache (`~/.cache/puppeteer`). */
   searchDirs?: string[];
-  /** Override the platform (for tests). Default: `process.platform`. */
+  /**
+   * Override the platform used for executable-NAME matching during
+   * resolution (tests / cross-checking). Default: `process.platform`. This
+   * does NOT affect `downloadChrome`, which always downloads for the current
+   * machine via `@puppeteer/browsers` `detectBrowserPlatform()`.
+   */
   platform?: PlatformName;
 }
 
@@ -93,7 +98,16 @@ export async function downloadChrome(
   const buildId = opts.buildId ?? DEFAULT_CHROME_BUILD;
   const cacheDir = opts.cacheDir ?? join(homedir(), ".cache", "puppeteer");
   opts.logger?.log(`Downloading Chrome ${buildId} (${platform})`, "step");
-  const installed = await install({ browser: Browser.CHROME, buildId, cacheDir, platform });
+  let installed;
+  try {
+    installed = await install({ browser: Browser.CHROME, buildId, cacheDir, platform });
+  } catch (err) {
+    throw new PptrKitError(`Chrome download failed (${buildId}, ${platform})`, {
+      cause: err,
+      retryable: true,
+      context: { buildId, platform },
+    });
+  }
   opts.logger?.log(`Chrome ready at ${installed.executablePath}`, "success");
   return { executablePath: installed.executablePath };
 }

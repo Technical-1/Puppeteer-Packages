@@ -36,6 +36,26 @@ describe("resolveChromePath", () => {
     const found = resolveChromePath({ searchDirs: [dir], platform: "linux" });
     expect(found).toBe(bin);
   });
+
+  it("descends into a macOS .app bundle to find the binary", () => {
+    const macOS = join(dir, "Google Chrome for Testing.app", "Contents", "MacOS");
+    mkdirSync(macOS, { recursive: true });
+    const bin = join(macOS, "Google Chrome for Testing");
+    writeFileSync(bin, "");
+    expect(resolveChromePath({ searchDirs: [dir], platform: "darwin" })).toBe(bin);
+  });
+
+  it("returns a match from the FIRST search dir that has one", () => {
+    const d1 = join(dir, "a");
+    const d2 = join(dir, "b");
+    mkdirSync(join(d1, "x"), { recursive: true });
+    mkdirSync(join(d2, "y"), { recursive: true });
+    writeFileSync(join(d1, "x", "chrome"), "");
+    writeFileSync(join(d2, "y", "chrome"), "");
+    expect(resolveChromePath({ searchDirs: [d1, d2], platform: "linux" })).toBe(
+      join(d1, "x", "chrome"),
+    );
+  });
 });
 
 describe("downloadChrome", () => {
@@ -45,6 +65,30 @@ describe("downloadChrome", () => {
       expect.objectContaining({ browser: "chrome", buildId: "100.0.0.0", cacheDir: dir }),
     );
     expect(res.executablePath).toBe("/downloaded/chrome");
+  });
+
+  it("logs step + success via the injected logger", async () => {
+    const log = vi.fn();
+    await downloadChrome({ cacheDir: dir, buildId: "1.0.0.0", logger: { log } });
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("Downloading Chrome"), "step");
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("Chrome ready"), "success");
+  });
+
+  it("throws a PptrKitError when platform cannot be detected", async () => {
+    (browsers.detectBrowserPlatform as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+      undefined,
+    );
+    await expect(downloadChrome({ cacheDir: dir })).rejects.toBeInstanceOf(PptrKitError);
+  });
+
+  it("wraps an install() failure as a RETRYABLE PptrKitError", async () => {
+    (browsers.install as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("ENETUNREACH"),
+    );
+    await expect(downloadChrome({ cacheDir: dir })).rejects.toMatchObject({
+      name: "PptrKitError",
+      retryable: true,
+    });
   });
 });
 
