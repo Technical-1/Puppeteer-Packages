@@ -471,7 +471,7 @@ git commit -m "feat(chrome-setup): expose public surface; verify dual build"
     "@technical-1/core": "workspace:*"
   },
   "peerDependencies": {
-    "puppeteer-core": ">=22"
+    "puppeteer-core": ">=22 <25"
   },
   "devDependencies": {
     "puppeteer-core": "^24.4.0"

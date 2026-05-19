@@ -155,6 +155,12 @@ what we learned. Plans below numbered in execution order.
   — never drain timers before the `.rejects` handler is attached, and never
   use `dangerouslyIgnoreUnhandledErrors` (it masks the bug). Resolve-path
   tests can `await vi.runAllTimersAsync()` then `await expect(p).resolves`.
+- **Bound peer-dependency ranges to the validated major.** A peer
+  (`puppeteer-core` on `launcher`, and any future peer) must be range-capped to
+  the highest major the package is actually built/tested against (e.g.
+  `">=22 <25"` since the devDep validates v24). An open-ended `>=N` silently
+  admits an unvalidated semver-major for consumers. Widen the cap only in a
+  change that explicitly validates the new major.
 - **Wrap external/library errors crossing a package boundary in a core
   error with an explicit `retryable`.** A raw error thrown by `puppeteer-core`,
   `@puppeteer/browsers`, `fs`, the network, etc. has no `.retryable`, so
