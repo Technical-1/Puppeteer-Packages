@@ -1,1 +1,1 @@
-export {};
+export { applyStealth } from "./stealth.js";
