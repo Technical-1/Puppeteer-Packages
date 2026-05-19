@@ -663,10 +663,12 @@ git commit -m "feat(navigation): expose public surface; verify dual build"
 
 - [ ] **Step 1:** Create the 5 skeleton files. `<pkg>`=`extract`,
   `<description>`=`List, table, and schema-driven DOM extraction helpers`.
-  `dependencies` block:
+  Dependency blocks — NOTE: `extract` is deliberately tolerant (returns
+  `""`/`[]`, never throws core errors, no logger) and imports NOTHING from
+  `@technical-1/core`, so it has NO `dependencies` block at all (only peer +
+  dev):
 
 ```json
-  "dependencies": { "@technical-1/core": "workspace:*" },
   "peerDependencies": { "puppeteer-core": ">=22 <25" },
   "devDependencies": { "puppeteer-core": "^24.4.0" }
 ```

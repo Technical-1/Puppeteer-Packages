@@ -153,6 +153,15 @@ what we learned. Plans below numbered in execution order.
   (warn). A disable for any other rule (e.g. `no-constant-condition` on
   `while (true)`) is UNUSED and itself emits a lint warning. Don't add disable
   directives for rules that aren't enabled; the monorepo lints with 0 warnings.
+- **Declare `@technical-1/core` only when actually imported.** Spec §4.2's
+  "every capability depends on core" presupposes the package *uses* a core
+  contract. A capability that genuinely imports a core VALUE
+  (`PptrKitError`/subclass, `LOG_LEVELS`) lists core in `dependencies`. One
+  that imports only a core TYPE (`LoggerOption`, etc.) lists it in
+  `devDependencies` (type-only, erased at emit). A genuinely standalone
+  tolerant capability that imports NOTHING from core (e.g. `extract` —
+  returns `""`/`[]`, no throws, no logger) has NO core dep at all. Never list
+  an unused runtime dep for convention's sake.
 - **Node typings come from root `@types/node`.** `@types/node` is a ROOT
   devDependency; with NodeNext + no explicit `types` array it is auto-included
   in every package. Packages using Node globals (`setTimeout`, `AbortSignal`,
