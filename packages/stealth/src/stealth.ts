@@ -1,4 +1,5 @@
 import { addExtra } from "puppeteer-extra";
+import type { VanillaPuppeteer } from "puppeteer-extra";
 // puppeteer-extra-plugin-stealth ships CJS `export =`. Under NodeNext +
 // verbatimModuleSyntax the roadmap convention is `import = require`, but that
 // form compiles to a synchronous `require()` call which Vitest's ESM mock
@@ -12,9 +13,15 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
 /**
  * Wrap a puppeteer instance with `puppeteer-extra` and apply the stealth
  * plugin. Returns the stealth-enhanced launcher (use its `.launch`).
+ *
+ * @remarks Pass a raw puppeteer instance — do NOT pass the return value of a
+ * previous `applyStealth` call (that double-wraps and fires stealth hooks
+ * twice).
  */
-export function applyStealth<T>(puppeteer: T): ReturnType<typeof addExtra> {
-  const enhanced = addExtra(puppeteer as never);
+export function applyStealth(
+  puppeteer: VanillaPuppeteer,
+): ReturnType<typeof addExtra> {
+  const enhanced = addExtra(puppeteer);
   enhanced.use(StealthPlugin());
   return enhanced;
 }

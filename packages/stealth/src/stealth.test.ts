@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 
 const { useSpy, extraInstance, addExtraSpy, stealthPluginSpy } = vi.hoisted(() => {
-  const useSpy = vi.fn().mockReturnThis();
+  const useSpy = vi.fn();
   const extraInstance = { use: useSpy };
   const addExtraSpy = vi.fn(() => extraInstance);
   const stealthPluginSpy = vi.fn(() => ({ name: "stealth" }));
@@ -16,7 +16,7 @@ import { applyStealth } from "./stealth.js";
 describe("applyStealth", () => {
   it("wraps the puppeteer instance with addExtra and applies the stealth plugin", () => {
     const puppeteer = { launch: vi.fn() };
-    const result = applyStealth(puppeteer);
+    const result = applyStealth(puppeteer as never);
     expect(addExtraSpy).toHaveBeenCalledWith(puppeteer);
     expect(stealthPluginSpy).toHaveBeenCalledTimes(1);
     expect(useSpy).toHaveBeenCalledWith({ name: "stealth" });
