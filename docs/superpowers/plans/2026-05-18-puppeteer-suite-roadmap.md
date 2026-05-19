@@ -149,6 +149,15 @@ what we learned. Plans below numbered in execution order.
   — never drain timers before the `.rejects` handler is attached, and never
   use `dangerouslyIgnoreUnhandledErrors` (it masks the bug). Resolve-path
   tests can `await vi.runAllTimersAsync()` then `await expect(p).resolves`.
+- **Wrap external/library errors crossing a package boundary in a core
+  error with an explicit `retryable`.** A raw error thrown by `puppeteer-core`,
+  `@puppeteer/browsers`, `fs`, the network, etc. has no `.retryable`, so
+  `@technical-1/retry`'s `defaultIsRetryable` treats it as terminal. Any
+  capability package that calls into an external lib must `try/catch` and
+  re-throw `new PptrKitError(msg, { cause, retryable: <true if transient> ,
+  context })` — transient I/O/network → `retryable:true`; deterministic
+  (bad selector, parse) → `retryable:false`. (Established by
+  `chrome-setup.downloadChrome` wrapping `@puppeteer/browsers` install.)
 - **Detect/classify suite errors by property, not `instanceof`.** Because
   packages publish dual ESM+CJS, `err instanceof PptrKitError` is unreliable
   across package boundaries. Consumers (especially `@technical-1/retry`)

@@ -242,6 +242,11 @@ describe("ensureChrome", () => {
 });
 ```
 
+> Code review added 5 more tests (commit `07c9732`): macOS `.app` descent;
+> first-search-dir-wins precedence; `downloadChrome` logger step+success;
+> `detectBrowserPlatform→undefined` throws `PptrKitError`; an `install()`
+> failure is wrapped as a **retryable** `PptrKitError`. Final count: 11.
+
 - [ ] **Step 2: Run, confirm failure**
 
 Run: `pnpm --filter @technical-1/chrome-setup test`
@@ -258,7 +263,7 @@ import { PptrKitError } from "@technical-1/core";
 import type { LoggerOption } from "@technical-1/core";
 
 /** Pinned Chrome-for-Testing build used when downloading. */
-export const DEFAULT_CHROME_BUILD = "131.0.6778.108";
+export const DEFAULT_CHROME_BUILD = "144.0.7559.96";
 
 type PlatformName = NodeJS.Platform | "linux" | "darwin" | "win32";
 
@@ -303,7 +308,11 @@ export interface ResolveChromeOptions {
   /** Directories to search (recursively). Default: `<cwd>/chrome-local`, the
    *  Puppeteer cache (`~/.cache/puppeteer`). */
   searchDirs?: string[];
-  /** Override the platform (for tests). Default: `process.platform`. */
+  /**
+   * Override the platform used for executable-NAME matching during
+   * resolution (tests / cross-checking). Default: `process.platform`. Does
+   * NOT affect `downloadChrome` (which auto-detects the current machine).
+   */
   platform?: PlatformName;
 }
 
@@ -342,7 +351,16 @@ export async function downloadChrome(
   const buildId = opts.buildId ?? DEFAULT_CHROME_BUILD;
   const cacheDir = opts.cacheDir ?? join(homedir(), ".cache", "puppeteer");
   opts.logger?.log(`Downloading Chrome ${buildId} (${platform})`, "step");
-  const installed = await install({ browser: Browser.CHROME, buildId, cacheDir, platform });
+  let installed;
+  try {
+    installed = await install({ browser: Browser.CHROME, buildId, cacheDir, platform });
+  } catch (err) {
+    throw new PptrKitError(`Chrome download failed (${buildId}, ${platform})`, {
+      cause: err,
+      retryable: true,
+      context: { buildId, platform },
+    });
+  }
   opts.logger?.log(`Chrome ready at ${installed.executablePath}`, "success");
   return { executablePath: installed.executablePath };
 }
@@ -836,7 +854,9 @@ fixed-size `BrowserPool`. `puppeteer-core` is a peer dependency of `launcher`.
 Run: `pnpm install && pnpm run ci`
 Expected: all 6 packages green (`core`, `retry`, `logger`, `config`,
 `chrome-setup`, `launcher`). Capture the turbo summary + per-package test
-counts (core 13, retry 10, logger 7, config 9, chrome-setup 8, launcher 8 = 55).
+counts (core 13, retry 10, logger 7, config 9, chrome-setup 12, launcher 8 =
+59 — chrome-setup grew from code-review hardening: macOS .app descent,
+first-dir-wins, logger, platform-undetected, retryable-install-error tests).
 Run: `pnpm run lint` → ZERO warnings/errors monorepo-wide.
 
 - [ ] **Step 3: Invariant sweep**
