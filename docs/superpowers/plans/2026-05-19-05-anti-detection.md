@@ -173,7 +173,7 @@ import { describe, it, expect, vi } from "vitest";
 // hoisted above const → TDZ otherwise). Roadmap convention.
 const { useSpy, extraInstance, addExtraSpy, stealthPluginSpy } = vi.hoisted(
   () => {
-    const useSpy = vi.fn().mockReturnThis();
+    const useSpy = vi.fn();
     const extraInstance = { use: useSpy };
     const addExtraSpy = vi.fn(() => extraInstance);
     const stealthPluginSpy = vi.fn(() => ({ name: "stealth" }));
@@ -189,7 +189,8 @@ import { applyStealth } from "./stealth.js";
 describe("applyStealth", () => {
   it("wraps the puppeteer instance with addExtra and applies the stealth plugin", () => {
     const puppeteer = { launch: vi.fn() };
-    const result = applyStealth(puppeteer);
+    // test-boundary cast: minimal mock doesn't satisfy full VanillaPuppeteer
+    const result = applyStealth(puppeteer as never);
     expect(addExtraSpy).toHaveBeenCalledWith(puppeteer);
     expect(stealthPluginSpy).toHaveBeenCalledTimes(1);
     expect(useSpy).toHaveBeenCalledWith({ name: "stealth" });
@@ -204,6 +205,7 @@ describe("applyStealth", () => {
 
 ```ts
 import { addExtra } from "puppeteer-extra";
+import type { VanillaPuppeteer } from "puppeteer-extra";
 // puppeteer-extra-plugin-stealth ships CJS `export =`. The DEFAULT import is
 // correct here: it typechecks (esModuleInterop:true + the package's .d.ts →
 // no TS1259) AND is the only form vi.mock can intercept. `import = require`
@@ -214,13 +216,26 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
 /**
  * Wrap a puppeteer instance with `puppeteer-extra` and apply the stealth
  * plugin. Returns the stealth-enhanced launcher (use its `.launch`).
+ *
+ * @remarks Pass a raw puppeteer instance — do NOT pass the return value of a
+ * previous `applyStealth` call (that double-wraps and fires stealth hooks
+ * twice).
  */
-export function applyStealth<T>(puppeteer: T): ReturnType<typeof addExtra> {
-  const enhanced = addExtra(puppeteer as never);
+export function applyStealth(
+  puppeteer: VanillaPuppeteer,
+): ReturnType<typeof addExtra> {
+  const enhanced = addExtra(puppeteer);
   enhanced.use(StealthPlugin());
   return enhanced;
 }
 ```
+
+The test's minimal mock (`{ launch: vi.fn() }`) does not satisfy the full
+`VanillaPuppeteer` interface, so the Step-1 test calls
+`applyStealth(puppeteer as never)` — a test-boundary cast (the established
+convention, like `as unknown as Page`); `src/` carries ZERO casts. The
+Step-1 `useSpy` is a plain `vi.fn()` (no `mockReturnThis()` — `applyStealth`
+never uses `.use()`'s return).
 
 - [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/stealth test` PASS (1 test); `pnpm --filter @technical-1/stealth typecheck` clean. `addExtra`/`StealthPlugin` ship their own types (real deps). The single `puppeteer as never` is the minimal DI boundary cast (puppeteer-extra types are loose) — no `as any`.
   **CJS interop (empirically verified — roadmap convention):** use the DEFAULT
