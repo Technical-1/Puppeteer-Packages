@@ -9,7 +9,8 @@ export interface LaunchOptions extends LoggerOption {
   executablePath: string;
   /** Headless mode. Default true. */
   headless?: boolean;
-  /** Extra Chrome args, appended after the sandbox defaults. */
+  /** Extra Chrome args, appended after the sandbox defaults (which a consumer
+   *  cannot remove via this option). */
   args?: string[];
 }
 
@@ -29,9 +30,26 @@ export async function launch(
   });
 }
 
+/** Close a browser without ever throwing; a close failure is only logged. */
+async function closeQuietly(browser: Browser, opts: LaunchOptions): Promise<void> {
+  try {
+    await browser.close();
+    opts.logger?.log("Browser closed", "info");
+  } catch (closeErr) {
+    opts.logger?.log(
+      `Browser close failed: ${
+        closeErr instanceof Error ? closeErr.message : String(closeErr)
+      }`,
+      "warn",
+    );
+  }
+}
+
 /**
- * Launch a browser, run `fn`, and ALWAYS close the browser in a `finally`
- * (spec §8 — a thrown error never leaks a browser process).
+ * Launch a browser, run `fn`, and ALWAYS close the browser afterward (spec
+ * §8 — a thrown error never leaks a browser process). A failure to `close()`
+ * is logged, never thrown: it must not mask a `fn` error nor discard a `fn`
+ * result.
  */
 export async function withBrowser<T>(
   puppeteer: PuppeteerLike,
@@ -39,10 +57,13 @@ export async function withBrowser<T>(
   fn: (browser: Browser) => Promise<T>,
 ): Promise<T> {
   const browser = await launch(puppeteer, opts);
+  let result: T;
   try {
-    return await fn(browser);
-  } finally {
-    await browser.close();
-    opts.logger?.log("Browser closed", "info");
+    result = await fn(browser);
+  } catch (err) {
+    await closeQuietly(browser, opts);
+    throw err;
   }
+  await closeQuietly(browser, opts);
+  return result;
 }
