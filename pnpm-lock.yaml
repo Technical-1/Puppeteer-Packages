@@ -79,6 +79,19 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/navigation:
+    dependencies:
+      '@technical-1/core':
+        specifier: workspace:*
+        version: link:../core
+      '@technical-1/retry':
+        specifier: workspace:*
+        version: link:../retry
+    devDependencies:
+      puppeteer-core:
+        specifier: ^24.4.0
+        version: 24.43.1
+
   packages/retry:
     dependencies:
       '@technical-1/core':
