@@ -710,7 +710,7 @@ export async function humanMouseMove(
 }
 ```
 
-- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/human test` PASS (3 tests, no noise — fake timers; the resolve-path delays drain via `runAllTimersAsync`/`advanceTimersByTimeAsync`, no unhandled rejection since nothing rejects); `pnpm --filter @technical-1/human typecheck` clean. The test mock for `humanType` reassigns `page.keyboard.type`; `page.focus`/`page.keyboard.type`/`page.mouse.move` are the only Page members used — confirm puppeteer-core types them. No `any`/DOM-lib in `src`.
+- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/human test` PASS (3 tests; code review adds a `between` inverted-bounds guard, `humanMouseMove` v1-limits JSDoc, and 2 contract tests — empty-text + steps=0 clamp → 5 tests, commit `619dc3e`); `pnpm --filter @technical-1/human typecheck` clean. No `any`/DOM-lib in `src`.
 
 - [ ] **Step 5: Commit**
 
@@ -758,7 +758,7 @@ export type {
 } from "./human.js";
 ```
 
-- [ ] **Step 4:** `pnpm --filter @technical-1/human test` PASS (4 tests); typecheck + build clean.
+- [ ] **Step 4:** `pnpm --filter @technical-1/human test` PASS (6 tests: 5 human + 1 index); typecheck + build clean.
 
 - [ ] **Step 5:** `ls packages/human/dist/index.js packages/human/dist/index.cjs packages/human/dist/index.d.ts packages/human/dist/index.d.cts` → all four.
 
@@ -1006,7 +1006,7 @@ throwing `core` `ProxyError`). `fingerprint`/`human`/`proxy` declare
   13 packages green. Capture turbo summary + per-package counts: core 13,
   retry 10, logger 7, config 9, chrome-setup 12, launcher 14,
   interaction-helpers 13, navigation 8, extract 9, stealth 2, fingerprint 5,
-  human 4, proxy 6 (= 112 — fingerprint grew +1 from review hardening).
+  human 6, proxy 6 (= 114 — fingerprint +1 and human +2 from review hardening).
   `pnpm run lint` → ZERO warnings/errors. If anything
   fails, STOP and report (don't mask).
 
