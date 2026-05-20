@@ -387,5 +387,20 @@ what we learned. Plans below numbered in execution order.
   sentinel-leak-guard test convention. 2captcha reference adapter via
   direct fetch — no SDK dep, no bundled credentials; apiKey URL-encoded
   and never logged or echoed in error payloads).
+- `2026-05-20-09-examples-integration-release.md` ← detailed, ready to
+  execute, **awaiting user authorization before execution**. Plan 09:
+  publish-prep — examples per package (typecheck-gated), integration tier
+  gated by `PPTR_IT=1` against a local fixture HTTP server, `release.yml`
+  Changesets pipeline, and the publish-blocking deferred items (sourcemap
+  dedup, SHA-pin actions, `workspace:^`, changeset-status CI guard,
+  `@types/node` consumer docs, npm publish checklist). 12 tasks. Externally
+  scoped: requires `@technical-1` npm scope + `NPM_TOKEN` GitHub Secret
+  before `release.yml` runs. NO new published packages.
+- Plans 10-12 are roadmap-only (not yet detailed):
+  - Plan 10: pre-1.0 surface review (deferred surface decisions —
+    fingerprint realism, navigation.goto return type, selective re-exports,
+    pdf margin merge improvement).
+  - Plan 11: `electron-gui-app` template (Puppeteer-Template repo).
+  - Plan 12: `cli-app` template + Puppeteer-Template repo polish.
 - Subsequent plans written iteratively after each predecessor is verified.
 - Template plans saved under `Puppeteer-Template/docs/superpowers/plans/`.
