@@ -37,6 +37,17 @@ describe("humanType", () => {
     expect(type).toHaveBeenNthCalledWith(1, "a");
     expect(type).toHaveBeenNthCalledWith(2, "b");
   });
+
+  it("focuses but issues no keyboard.type calls for empty text", async () => {
+    const focus = vi.fn().mockResolvedValue(undefined);
+    const type = vi.fn().mockResolvedValue(undefined);
+    const page = { focus, keyboard: { type } } as unknown as Page;
+    const p = humanType(page, "#in", "");
+    await vi.runAllTimersAsync();
+    await p;
+    expect(focus).toHaveBeenCalledWith("#in");
+    expect(type).not.toHaveBeenCalled();
+  });
 });
 
 describe("humanMouseMove", () => {
@@ -53,5 +64,20 @@ describe("humanMouseMove", () => {
     await p;
     expect(move).toHaveBeenCalledTimes(4);
     expect(move).toHaveBeenLastCalledWith(100, 100);
+  });
+
+  it("clamps steps to 1 when steps=0 is given, ending at the target", async () => {
+    const move = vi.fn().mockResolvedValue(undefined);
+    const page = { mouse: { move } } as unknown as Page;
+    const p = humanMouseMove(
+      page,
+      { x: 10, y: 20 },
+      { x: 200, y: 300 },
+      { steps: 0 },
+    );
+    await vi.runAllTimersAsync();
+    await p;
+    expect(move).toHaveBeenCalledTimes(1);
+    expect(move).toHaveBeenCalledWith(200, 300);
   });
 });

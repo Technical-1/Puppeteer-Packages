@@ -3,7 +3,9 @@ import type { Page } from "puppeteer-core";
 export type RandomFn = () => number;
 
 function between(min: number, max: number, rand: RandomFn): number {
-  return min + rand() * (max - min);
+  const lo = Math.min(min, max);
+  const hi = Math.max(min, max);
+  return lo + rand() * (hi - lo);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -57,7 +59,14 @@ export interface MouseMoveOptions {
   steps?: number;
 }
 
-/** Move the mouse from `from` to `to` in `steps` linear increments. */
+/**
+ * Move the mouse from `from` to `to` in `steps` linear increments.
+ *
+ * v1 limitations: linear interpolation with constant step size (no curve /
+ * bezier — detectable as non-human by velocity-aware analysers), and the N
+ * moves are dispatched back-to-back with NO inter-step delay (sleep between
+ * `humanMouseMove` and other actions if velocity matters).
+ */
 export async function humanMouseMove(
   page: Page,
   from: MousePoint,
