@@ -925,7 +925,7 @@ export class ProxyRotator {
 }
 ```
 
-- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/proxy test` PASS (5 tests); `pnpm --filter @technical-1/proxy typecheck` clean. `ProxyError` is a value import (thrown); `Page` type-only. `this.#pool[this.#idx] as string` is a `noUncheckedIndexedAccess` boundary on a provably in-range index (modulo over non-empty pool) — acceptable in `src` here (no `any`). If `page.authenticate`'s `Credentials` type differs, `{username,password}` is structurally assignable; confirm without `as any`.
+- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/proxy test` PASS (5 tests; code review marks both programmer-error throws `retryable:false`, adds applyProxyAuth clear-auth JSDoc, and adds defensive-copy + single-entry tests → 7 tests, commit `28a46a6`); `pnpm --filter @technical-1/proxy typecheck` clean. `ProxyError` is a value import (thrown); `Page` type-only. `this.#pool[this.#idx] as string` is a `noUncheckedIndexedAccess` boundary on a provably in-range index (modulo over non-empty pool) — acceptable in `src` here (no `any`).
 
 - [ ] **Step 5: Commit**
 
@@ -967,7 +967,7 @@ export { proxyArg, applyProxyAuth, ProxyRotator } from "./proxy.js";
 export type { ProxyCredentials } from "./proxy.js";
 ```
 
-- [ ] **Step 4:** `pnpm --filter @technical-1/proxy test` PASS (6 tests); typecheck + build clean.
+- [ ] **Step 4:** `pnpm --filter @technical-1/proxy test` PASS (8 tests: 7 proxy + 1 index); typecheck + build clean.
 
 - [ ] **Step 5:** `ls packages/proxy/dist/index.js packages/proxy/dist/index.cjs packages/proxy/dist/index.d.ts packages/proxy/dist/index.d.cts` → all four.
 
@@ -1006,7 +1006,7 @@ throwing `core` `ProxyError`). `fingerprint`/`human`/`proxy` declare
   13 packages green. Capture turbo summary + per-package counts: core 13,
   retry 10, logger 7, config 9, chrome-setup 12, launcher 14,
   interaction-helpers 13, navigation 8, extract 9, stealth 2, fingerprint 5,
-  human 6, proxy 6 (= 114 — fingerprint +1 and human +2 from review hardening).
+  human 6, proxy 8 (= 116 — fingerprint +1, human +2, proxy +2 from review hardening).
   `pnpm run lint` → ZERO warnings/errors. If anything
   fails, STOP and report (don't mask).
 
