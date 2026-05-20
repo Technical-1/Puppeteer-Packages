@@ -3,8 +3,11 @@ import type { Page } from "puppeteer-core";
 import { injectToken } from "./inject.js";
 
 function pageMock(): Page {
+  // The real in-page callback returns `true` on success — mirror the
+  // runtime contract here so the implementation's `landed === false` check
+  // exercises against a faithful boolean (not undefined).
   return {
-    evaluate: vi.fn().mockResolvedValue(undefined),
+    evaluate: vi.fn().mockResolvedValue(true),
   } as unknown as Page;
 }
 

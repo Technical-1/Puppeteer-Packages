@@ -345,6 +345,16 @@ what we learned. Plans below numbered in execution order.
   what was actually `(dir, fn)`. Verbatim copy from a plan-draft to README
   is fine, but the plan-draft itself must be verified against the
   implementation before the plan goes to execution.
+- **Secrets-handling packages ship a sentinel-value leak-guard test.** Any
+  package that holds a secret (apiKey, token, oauth refresh-token, etc.)
+  must have a test using an obviously-unique sentinel like
+  `"SECRET_KEY_DO_NOT_LEAK"`, then assert the sentinel does NOT appear in:
+  (a) `console.log` and `console.error` spy call arguments, AND (b) the
+  serialized thrown error payload (`name`, `message`, `context`, `stack`).
+  This catches both accidental `console.log(apiKey)` and accidental
+  `new Error(\`failed with key ${apiKey}\`)` — the latter is the more
+  common mistake. Established by `captcha.two-captcha.test.ts` after Plan
+  08's security-rigor review pass.
 
 ## Plan files
 
@@ -372,10 +382,10 @@ what we learned. Plans below numbered in execution order.
   published `.d.ts`, plus the "README examples must match the implementation
   signature" verification step. `downloads` uses CDP
   `Browser.setDownloadBehavior` + filesystem polling).
-- `2026-05-20-08-captcha.md` ← detailed, ready to execute (Plan 08:
-  `captcha` — adapter interface + reference 2captcha adapter via direct
-  `fetch` to in.php/res.php; no SDK dep, no bundled credentials; injectable
-  `fetch` via the cemented `*ForTesting` shim convention; dedicated
-  apiKey-leak-guard test).
+- `2026-05-20-08-captcha.md` ← ✅ DONE, merged to `main` (Plan 08:
+  `captcha`; 19 pkgs / 173 tests; cemented the secrets-handling
+  sentinel-leak-guard test convention. 2captcha reference adapter via
+  direct fetch — no SDK dep, no bundled credentials; apiKey URL-encoded
+  and never logged or echoed in error payloads).
 - Subsequent plans written iteratively after each predecessor is verified.
 - Template plans saved under `Puppeteer-Template/docs/superpowers/plans/`.
