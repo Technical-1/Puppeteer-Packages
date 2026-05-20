@@ -1,2 +1,3 @@
-// Public surface — filled in by P7T2 & P7T3.
-export {};
+export { timestampedPath } from "./timestamp.js";
+export type { Clock } from "./timestamp.js";
+export { screenshot, screenshotElement } from "./screenshot.js";
