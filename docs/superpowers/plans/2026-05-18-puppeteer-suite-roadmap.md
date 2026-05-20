@@ -289,6 +289,40 @@ what we learned. Plans below numbered in execution order.
   barrels. A package that puts real logic in `index.ts` must either move that
   logic to a named module or adjust coverage when coverage is activated
   (Plan 09).
+- **Browser-driving packages declare `puppeteer-core` in BOTH `peerDependencies`
+  AND `devDependencies`.** `peerDependencies` is the runtime contract with
+  consumers (bounded `>=22 <25`); `devDependencies` (a concrete pin like
+  `^24.4.0`) is what the package's own `tsup` DTS step uses to resolve
+  `import type { ... } from "puppeteer-core"` during build. Without the
+  devDep the build fails with `TS2307: Cannot find module 'puppeteer-core'`
+  on the first type-only import. Established by every browser-driving
+  package shipped so far (`launcher`, `navigation`, `interaction-helpers`,
+  `extract`, `proxy`, `fingerprint`, `human`, now `session`).
+- **Every package has both a `lint` and a `typecheck` script in addition to
+  `build`/`test`.** `lint` is `eslint src` (no `--max-warnings=0` — the
+  monorepo-level CI gate enforces zero warnings via the flat ESLint config's
+  rule levels). `typecheck` is `tsc --noEmit` and is non-redundant with
+  `build`: vitest's transpiler strips types but does NOT strictly check them,
+  so without `typecheck` you can ship a file whose `.d.ts` consumers will
+  not compile (P6T2 caught a `sourceScheme: "Unsecure"` → `"NonSecure"`
+  fixture bug exactly this way). All 15 published packages have the same
+  script set: `build`, `typecheck`, `lint`, `test`.
+- **Frozen exported tables: `Object.freeze` outside + `Object.freeze<T>` per
+  entry.** A package that exports a public read-only constant table
+  (e.g. `THROTTLE_PROFILES`) freezes both the wrapper object AND each entry,
+  with an explicit generic type parameter on the inner freeze. The inner
+  `<T>` (not an `as T` cast) preserves literal narrowing of boolean and
+  numeric fields. Double-freeze prevents cross-realm mutation by consumers
+  in long-lived processes (the consumer's `Object.freeze` policy is not
+  the package's responsibility — defensive immutability is). Established by
+  `network.THROTTLE_PROFILES`; expected to apply to any future profile /
+  preset / catalog constants (fingerprint pools, captcha profile registries,
+  etc.).
+- **Sibling-symmetric `package.json` `files: ["dist"]` only.** npm auto-bundles
+  the package's `README.md` regardless of what's listed in `files`; an
+  explicit `"README.md"` entry is redundant and creates asymmetry with the
+  ~14 prior packages. Stay minimal: `"files": ["dist"]`. The README still
+  ships.
 
 ## Plan files
 
@@ -301,8 +335,14 @@ what we learned. Plans below numbered in execution order.
   browser + bounded-peer + concurrency/cleanup conventions).
 - `2026-05-19-04-navigation-data.md` ← ✅ DONE, merged to `main` (Plan 04:
   `interaction-helpers` + `navigation` + `extract`; 9 pkgs / 95 tests).
-- `2026-05-19-05-anti-detection.md` ← detailed, ready to execute (Plan 05:
-  `stealth` + `fingerprint` + `human` + `proxy`; introduces the
-  `puppeteer-extra` real-dependency exception).
+- `2026-05-19-05-anti-detection.md` ← ✅ DONE, merged to `main` (Plan 05:
+  `stealth` + `fingerprint` + `human` + `proxy`; 13 pkgs / 116 tests;
+  cemented the empirical CJS-interop convention — default import + `vi.hoisted()`,
+  NOT `import = require` — and the `puppeteer-extra` real-dep exception).
+- `2026-05-20-06-state-traffic.md` ← ✅ DONE, merged to `main` (Plan 06:
+  `session` + `network`; 15 pkgs / 142 tests; cemented the dev+peer
+  `puppeteer-core` convention, the `Object.freeze` table convention, the
+  `lint`+`typecheck` script convention, and `files: ["dist"]` symmetry.
+  `session` uses non-deprecated v24 `page.browserContext().cookies()` path).
 - Subsequent plans written iteratively after each predecessor is verified.
 - Template plans saved under `Puppeteer-Template/docs/superpowers/plans/`.

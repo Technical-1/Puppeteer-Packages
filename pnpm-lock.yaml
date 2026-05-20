@@ -110,6 +110,16 @@ importers:
         specifier: ^24.4.0
         version: 24.43.1
 
+  packages/network:
+    dependencies:
+      '@technical-1/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      puppeteer-core:
+        specifier: ^24.4.0
+        version: 24.43.1
+
   packages/proxy:
     dependencies:
       '@technical-1/core':
@@ -125,6 +135,16 @@ importers:
       '@technical-1/core':
         specifier: workspace:*
         version: link:../core
+
+  packages/session:
+    dependencies:
+      '@technical-1/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      puppeteer-core:
+        specifier: ^24.4.0
+        version: 24.43.1
 
   packages/stealth:
     dependencies:
