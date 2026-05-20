@@ -1,7 +1,10 @@
-import { describe, it } from "vitest";
+import { describe, it, expect } from "vitest";
+import * as api from "./index.js";
 
-describe("@technical-1/captcha", () => {
-  it("placeholder — package loads without error", () => {
-    // Will be replaced by the real surface assertion in P8T4.
+describe("@technical-1/captcha public surface", () => {
+  it("exports exactly the documented surface", () => {
+    expect(Object.keys(api).sort()).toEqual(
+      ["createTwoCaptchaAdapter", "injectToken"].sort(),
+    );
   });
 });
