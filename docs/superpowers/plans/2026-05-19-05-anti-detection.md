@@ -468,7 +468,7 @@ export async function applyFingerprint(
 }
 ```
 
-- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/fingerprint test` PASS (3 tests); `pnpm --filter @technical-1/fingerprint typecheck` clean. `pick`'s `as T` is a `noUncheckedIndexedAccess` boundary on a provably in-range index (clamped by `Math.min`); acceptable in `src` here (no `any`). If `page.setViewport`'s `Viewport` type requires more fields, the `{width,height}` literal is structurally assignable (other Viewport fields are optional); confirm — do NOT add DOM lib or `as any`.
+- [ ] **Step 4: Run, confirm pass + typecheck** — `pnpm --filter @technical-1/fingerprint test` PASS (3 tests; code review adds an empty-pool guard, bumps the UA pool to Chrome 144, adds a q-value `ACCEPT_LANGUAGE` map, and adds a clamp-at-1.0 test + index-0/`toHaveBeenCalledTimes` assertions → 4 tests, commit `09804dd`); `pnpm --filter @technical-1/fingerprint typecheck` clean. `pick`'s `as T` is a `noUncheckedIndexedAccess` boundary (provably in-range post empty-guard + `Math.min` clamp; no `any`). `{width,height}` is structurally assignable to `Viewport` (other fields optional) — no DOM lib / `as any`.
 
 - [ ] **Step 5: Commit**
 
@@ -509,7 +509,7 @@ export { randomFingerprint, applyFingerprint } from "./fingerprint.js";
 export type { Fingerprint, RandomFn } from "./fingerprint.js";
 ```
 
-- [ ] **Step 4:** `pnpm --filter @technical-1/fingerprint test` PASS (4 tests); typecheck + build clean.
+- [ ] **Step 4:** `pnpm --filter @technical-1/fingerprint test` PASS (5 tests: 4 fingerprint + 1 index); typecheck + build clean.
 
 - [ ] **Step 5:** `ls packages/fingerprint/dist/index.js packages/fingerprint/dist/index.cjs packages/fingerprint/dist/index.d.ts packages/fingerprint/dist/index.d.cts` → all four.
 
@@ -1005,8 +1005,9 @@ throwing `core` `ProxyError`). `fingerprint`/`human`/`proxy` declare
 - [ ] **Step 2: Whole-monorepo CI gate** — `pnpm install && pnpm run ci` → ALL
   13 packages green. Capture turbo summary + per-package counts: core 13,
   retry 10, logger 7, config 9, chrome-setup 12, launcher 14,
-  interaction-helpers 13, navigation 8, extract 9, stealth 2, fingerprint 4,
-  human 4, proxy 6 (= 111). `pnpm run lint` → ZERO warnings/errors. If anything
+  interaction-helpers 13, navigation 8, extract 9, stealth 2, fingerprint 5,
+  human 4, proxy 6 (= 112 — fingerprint grew +1 from review hardening).
+  `pnpm run lint` → ZERO warnings/errors. If anything
   fails, STOP and report (don't mask).
 
 - [ ] **Step 3: Invariant sweep** — `grep -rn "autom8ops" packages/ docs/ .changeset/ .github/ 2>/dev/null | grep -v node_modules || echo "clean"` → `clean`.

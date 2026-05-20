@@ -109,6 +109,16 @@ what we learned. Plans below numbered in execution order.
   release. Plan 09 must consciously confirm or change this (e.g. `workspace:^`)
   before the first `changeset publish`, and surface the decision as a comment
   in `release.yml`.
+- **`fingerprint` realism follow-ups (pre-1.0 / v2).** (a) The UA pool's
+  Chrome major must stay in sync with `chrome-setup`'s `DEFAULT_CHROME_BUILD`
+  (currently both 144 — a mismatch is a detection signal). Pre-1.0: decide
+  whether `fingerprint` should derive the UA Chrome version from a shared
+  constant rather than a hardcoded pool (would add a dep — currently standalone,
+  so deferred). (b) `applyFingerprint` sets only the `Accept-Language` header;
+  a full v2 spoof would also override in-page `navigator.language`/`languages`
+  via `evaluateOnNewDocument`. (c) `randomFingerprint` picks fields
+  independently (possible geographic incoherence) — v2 could correlate them.
+  All three are documented v1 limitations in the package JSDoc.
 - **`navigation.goto` return type (pre-1.0 consideration).** `goto` returns
   `void` and deliberately does NOT treat HTTP 4xx/5xx as a navigation failure
   (documented contract — many valid uses scrape error pages). A pre-1.0 review
