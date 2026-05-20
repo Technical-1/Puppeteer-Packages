@@ -2,8 +2,9 @@ import { describe, it, expect } from "vitest";
 import * as api from "./index.js";
 
 describe("@technical-1/downloads public surface", () => {
-  it("exports the documented surface only", () => {
-    // Placeholder — replaced when P7T9 lands the barrel test.
-    expect(typeof api).toBe("object");
+  it("exports exactly the documented surface", () => {
+    expect(Object.keys(api).sort()).toEqual(
+      ["awaitDownload", "enableDownloads"].sort(),
+    );
   });
 });
