@@ -850,7 +850,7 @@ export interface ResponseRecord {
 
 /** Handle returned by `captureResponses`. */
 export interface ResponseCollector {
-  /** Mutable record list — callers may read at any time. */
+  /** Caller-readable snapshot. Updated live as responses arrive. */
   readonly responses: ReadonlyArray<ResponseRecord>;
   /** Unsubscribe from page response events. Idempotent. */
   stop(): void;
