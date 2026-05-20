@@ -1,0 +1,26 @@
+{
+  "name": "@technical-1/human",
+  "version": "0.0.0",
+  "description": "Humanized delays, typing cadence, and mouse movement",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "files": ["dist"],
+  "exports": {
+    ".": {
+      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run"
+  },
+  "peerDependencies": { "puppeteer-core": ">=22 <25" },
+  "devDependencies": { "puppeteer-core": "^24.4.0" }
+}
