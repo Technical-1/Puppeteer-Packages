@@ -64,7 +64,9 @@ export function randomFingerprint(rand: RandomFn = Math.random): Fingerprint {
  *
  * v1 limitations: only the `Accept-Language` HTTP header is set — the in-page
  * `navigator.language`/`navigator.languages` are NOT overridden (a JS-level
- * fingerprinter could still read the launch locale).
+ * fingerprinter could still read the launch locale). Also, `setExtraHTTPHeaders`
+ * is full-replace: any extra headers a caller set on the page before
+ * `applyFingerprint` are dropped — call this first, then layer your own.
  */
 export async function applyFingerprint(
   page: Page,
