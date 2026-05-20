@@ -323,6 +323,28 @@ what we learned. Plans below numbered in execution order.
   explicit `"README.md"` entry is redundant and creates asymmetry with the
   ~14 prior packages. Stay minimal: `"files": ["dist"]`. The README still
   ships.
+- **Test-only DI seams use a `*ForTesting` shim, NOT a widened parameter type
+  on the public function.** If a function needs injectable hooks for tests
+  (e.g. `readdir`/`stat`/`fetch`/`crypto`), DO NOT type the public function's
+  `opts` parameter with the wider "Internal" interface — that interface's
+  fields land in the published `.d.ts` and consumers see them in
+  autocomplete, defeating the privacy. Instead: export a thin wrapper named
+  `<fnName>` typed against the narrow public `Options`, which calls a
+  separate `export async function <fnName>ForTesting` typed against the
+  wider `InternalOptions`. The barrel re-exports ONLY the narrow wrapper;
+  tests import `<fnName>ForTesting` directly from the source file. The
+  public `.d.ts` then carries only the narrow signature. (Established by
+  `downloads.awaitDownload` / `awaitDownloadForTesting` after the Plan 07
+  holistic caught the leak.)
+- **README code examples MUST match the actual public signature.** A
+  positional-args swap (e.g. `awaitDownload(page, dir, fn)` when the real
+  signature is `(dir, fn, opts?)`) compiles in markdown but fails on
+  first user paste. Before merging a plan, verify each README's import
+  destructure and each call-site arity against the implementation. Plan
+  07 hit this in `downloads/README.md` — caller had `(page, dir, fn)` for
+  what was actually `(dir, fn)`. Verbatim copy from a plan-draft to README
+  is fine, but the plan-draft itself must be verified against the
+  implementation before the plan goes to execution.
 
 ## Plan files
 
@@ -344,9 +366,11 @@ what we learned. Plans below numbered in execution order.
   `puppeteer-core` convention, the `Object.freeze` table convention, the
   `lint`+`typecheck` script convention, and `files: ["dist"]` symmetry.
   `session` uses non-deprecated v24 `page.browserContext().cookies()` path).
-- `2026-05-20-07-output-tier.md` ← detailed, ready to execute (Plan 07:
-  `screenshots` + `pdf` + `downloads`; 10 tasks; `downloads` uses CDP
-  `Browser.setDownloadBehavior` + filesystem polling with injectable
-  `readdir`/`stat` for unit-test mocking — no `vi.mock("node:fs/promises")`).
+- `2026-05-20-07-output-tier.md` ← ✅ DONE, merged to `main` (Plan 07:
+  `screenshots` + `pdf` + `downloads`; 18 pkgs / 163 tests; cemented the
+  `*ForTesting` shim pattern for DI seams that must NOT leak into the
+  published `.d.ts`, plus the "README examples must match the implementation
+  signature" verification step. `downloads` uses CDP
+  `Browser.setDownloadBehavior` + filesystem polling).
 - Subsequent plans written iteratively after each predecessor is verified.
 - Template plans saved under `Puppeteer-Template/docs/superpowers/plans/`.
