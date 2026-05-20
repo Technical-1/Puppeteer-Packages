@@ -26,7 +26,9 @@ puppeteer-core peer + DI-mockable conventions:
 real `dependencies`, not peers. All page-driving packages import ONLY
 `puppeteer-core` types and inject the `Page`/instance (unit-test with mocks —
 no real Chrome/network, spec §9). `proxy` throws the typed `core` `ProxyError`
-(retryable) for invalid input (§4.6/§8).
+for invalid input (§4.6/§8) — explicit `retryable:false` for programmer
+errors (blank URL, empty pool); the `ProxyError` base default `retryable:true`
+is reserved for genuine runtime connection failures.
 
 **Tech Stack:** TypeScript (NodeNext, strict, verbatimModuleSyntax), tsup,
 vitest. `puppeteer-core` types only (peer) for fingerprint/human/proxy.
