@@ -136,6 +136,16 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/screenshots:
+    dependencies:
+      '@technical-1/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      puppeteer-core:
+        specifier: ^24.4.0
+        version: 24.43.1
+
   packages/session:
     dependencies:
       '@technical-1/core':
