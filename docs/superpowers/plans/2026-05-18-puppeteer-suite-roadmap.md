@@ -372,5 +372,10 @@ what we learned. Plans below numbered in execution order.
   published `.d.ts`, plus the "README examples must match the implementation
   signature" verification step. `downloads` uses CDP
   `Browser.setDownloadBehavior` + filesystem polling).
+- `2026-05-20-08-captcha.md` ← detailed, ready to execute (Plan 08:
+  `captcha` — adapter interface + reference 2captcha adapter via direct
+  `fetch` to in.php/res.php; no SDK dep, no bundled credentials; injectable
+  `fetch` via the cemented `*ForTesting` shim convention; dedicated
+  apiKey-leak-guard test).
 - Subsequent plans written iteratively after each predecessor is verified.
 - Template plans saved under `Puppeteer-Template/docs/superpowers/plans/`.
