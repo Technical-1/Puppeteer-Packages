@@ -43,4 +43,21 @@ describe("ProxyRotator", () => {
   it("throws ProxyError when constructed with an empty pool", () => {
     expect(() => new ProxyRotator([])).toThrow(ProxyError);
   });
+
+  it("is unaffected by post-construction mutation of the source array (defensive copy)", () => {
+    const pool = ["a", "b"];
+    const r = new ProxyRotator(pool);
+    pool[0] = "z";
+    pool.push("c");
+    expect(r.next()).toBe("a");
+    expect(r.next()).toBe("b");
+    expect(r.next()).toBe("a"); // wraps — caller's push not visible
+  });
+
+  it("returns the only proxy repeatedly with a single-entry pool", () => {
+    const r = new ProxyRotator(["only"]);
+    expect(r.next()).toBe("only");
+    expect(r.next()).toBe("only");
+    expect(r.next()).toBe("only");
+  });
 });
