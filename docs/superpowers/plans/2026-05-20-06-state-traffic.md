@@ -274,6 +274,10 @@ import { describe, it, expect, vi } from "vitest";
 import type { BrowserContext, Cookie, Page } from "puppeteer-core";
 import { captureSession, restoreSession } from "./snapshot.js";
 
+// Cookie fixture — sourceScheme must be one of "Unset" | "NonSecure" | "Secure"
+// per puppeteer-core 24.x's CookieSourceScheme enum. Cast via `unknown` because
+// the strict `Cookie` type carries a handful of optional fields irrelevant to
+// these tests.
 const sampleCookies: Cookie[] = [
   {
     name: "sid",
@@ -286,9 +290,9 @@ const sampleCookies: Cookie[] = [
     secure: false,
     session: true,
     sameParty: false,
-    sourceScheme: "Unsecure",
+    sourceScheme: "NonSecure",
     sourcePort: 80,
-  } as Cookie,
+  } as unknown as Cookie,
 ];
 
 function pageMock(opts: {
