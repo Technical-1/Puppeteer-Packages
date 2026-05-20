@@ -42,7 +42,7 @@ export async function captureSession(page: Page): Promise<SessionSnapshot> {
       capturedAt: new Date().toISOString(),
     };
   } catch (cause) {
-    throw new SessionError("captureSession failed", { cause });
+    throw new SessionError("captureSession failed", { cause, retryable: false });
   }
 }
 
@@ -72,6 +72,13 @@ export async function restoreSession(
       snapshot.sessionStorage,
     );
   } catch (cause) {
-    throw new SessionError("restoreSession failed", { cause });
+    throw new SessionError(
+      `restoreSession failed (cookies: ${snapshot.cookies.length}, localKeys: ${Object.keys(snapshot.localStorage).length}, sessionKeys: ${Object.keys(snapshot.sessionStorage).length})`,
+      { cause, retryable: false, context: {
+        cookies: snapshot.cookies.length,
+        localKeys: Object.keys(snapshot.localStorage).length,
+        sessionKeys: Object.keys(snapshot.sessionStorage).length,
+      } },
+    );
   }
 }
