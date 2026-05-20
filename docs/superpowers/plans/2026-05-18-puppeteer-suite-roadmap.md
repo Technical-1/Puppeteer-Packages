@@ -289,6 +289,15 @@ what we learned. Plans below numbered in execution order.
   barrels. A package that puts real logic in `index.ts` must either move that
   logic to a named module or adjust coverage when coverage is activated
   (Plan 09).
+- **Browser-driving packages declare `puppeteer-core` in BOTH `peerDependencies`
+  AND `devDependencies`.** `peerDependencies` is the runtime contract with
+  consumers (bounded `>=22 <25`); `devDependencies` (a concrete pin like
+  `^24.4.0`) is what the package's own `tsup` DTS step uses to resolve
+  `import type { ... } from "puppeteer-core"` during build. Without the
+  devDep the build fails with `TS2307: Cannot find module 'puppeteer-core'`
+  on the first type-only import. Established by every browser-driving
+  package shipped so far (`launcher`, `navigation`, `interaction-helpers`,
+  `extract`, `proxy`, `fingerprint`, `human`, now `session`).
 
 ## Plan files
 
@@ -301,8 +310,13 @@ what we learned. Plans below numbered in execution order.
   browser + bounded-peer + concurrency/cleanup conventions).
 - `2026-05-19-04-navigation-data.md` ← ✅ DONE, merged to `main` (Plan 04:
   `interaction-helpers` + `navigation` + `extract`; 9 pkgs / 95 tests).
-- `2026-05-19-05-anti-detection.md` ← detailed, ready to execute (Plan 05:
-  `stealth` + `fingerprint` + `human` + `proxy`; introduces the
-  `puppeteer-extra` real-dependency exception).
+- `2026-05-19-05-anti-detection.md` ← ✅ DONE, merged to `main` (Plan 05:
+  `stealth` + `fingerprint` + `human` + `proxy`; 13 pkgs / 116 tests;
+  cemented the empirical CJS-interop convention — default import + `vi.hoisted()`,
+  NOT `import = require` — and the `puppeteer-extra` real-dep exception).
+- `2026-05-20-06-state-traffic.md` ← detailed, ready to execute (Plan 06:
+  `session` + `network`; cookie/storage snapshots + request blocking /
+  response capture / throttling. No core change — `SessionError` already
+  exists from Plan 01; `network` wraps externals in `PptrKitError`).
 - Subsequent plans written iteratively after each predecessor is verified.
 - Template plans saved under `Puppeteer-Template/docs/superpowers/plans/`.
