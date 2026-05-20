@@ -344,5 +344,9 @@ what we learned. Plans below numbered in execution order.
   `puppeteer-core` convention, the `Object.freeze` table convention, the
   `lint`+`typecheck` script convention, and `files: ["dist"]` symmetry.
   `session` uses non-deprecated v24 `page.browserContext().cookies()` path).
+- `2026-05-20-07-output-tier.md` ← detailed, ready to execute (Plan 07:
+  `screenshots` + `pdf` + `downloads`; 10 tasks; `downloads` uses CDP
+  `Browser.setDownloadBehavior` + filesystem polling with injectable
+  `readdir`/`stat` for unit-test mocking — no `vi.mock("node:fs/promises")`).
 - Subsequent plans written iteratively after each predecessor is verified.
 - Template plans saved under `Puppeteer-Template/docs/superpowers/plans/`.
