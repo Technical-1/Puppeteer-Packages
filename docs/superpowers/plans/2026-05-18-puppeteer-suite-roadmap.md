@@ -109,6 +109,16 @@ what we learned. Plans below numbered in execution order.
   release. Plan 09 must consciously confirm or change this (e.g. `workspace:^`)
   before the first `changeset publish`, and surface the decision as a comment
   in `release.yml`.
+- **`fingerprint` realism follow-ups (pre-1.0 / v2).** (a) The UA pool's
+  Chrome major must stay in sync with `chrome-setup`'s `DEFAULT_CHROME_BUILD`
+  (currently both 144 — a mismatch is a detection signal). Pre-1.0: decide
+  whether `fingerprint` should derive the UA Chrome version from a shared
+  constant rather than a hardcoded pool (would add a dep — currently standalone,
+  so deferred). (b) `applyFingerprint` sets only the `Accept-Language` header;
+  a full v2 spoof would also override in-page `navigator.language`/`languages`
+  via `evaluateOnNewDocument`. (c) `randomFingerprint` picks fields
+  independently (possible geographic incoherence) — v2 could correlate them.
+  All three are documented v1 limitations in the package JSDoc.
 - **`navigation.goto` return type (pre-1.0 consideration).** `goto` returns
   `void` and deliberately does NOT treat HTTP 4xx/5xx as a navigation failure
   (documented contract — many valid uses scrape error pages). A pre-1.0 review
@@ -167,6 +177,27 @@ what we learned. Plans below numbered in execution order.
   tolerant capability that imports NOTHING from core (e.g. `extract` —
   returns `""`/`[]`, no throws, no logger) has NO core dep at all. Never list
   an unused runtime dep for convention's sake.
+- **CJS `export =` deps: use the default import, NOT `import = require`**
+  (empirically verified, supersedes the earlier prediction). For a CJS
+  `export = X` dep (e.g. `puppeteer-extra-plugin-stealth`; likely the 2captcha
+  adapter in Plan 08): `import Foo from "dep"` typechecks cleanly under our
+  tsconfig (`esModuleInterop:true` + the package's actual `.d.ts` → TS does
+  NOT raise TS1259 for these packages) AND is the only form `vi.mock` can
+  intercept. Do NOT use `import Foo = require("dep")` — it compiles to a
+  synchronous `require()` that Vitest's ESM mock registry cannot intercept
+  (spy receives 0 calls). The matching mock is
+  `vi.mock("dep", () => ({ default: spy }))` (a default import receives
+  `.default`). If a specific package's `.d.ts` genuinely raises TS1259 with
+  the default import, resolve empirically (`import * as Foo`) — verify, don't
+  assume. Named-export CJS deps (`puppeteer-extra`'s `addExtra`) import
+  normally.
+- **Spies used inside a `vi.mock` factory must be created via `vi.hoisted()`.**
+  `vi.mock` is hoisted above `const` declarations, so referencing top-level
+  `const spy = vi.fn()` from the factory throws a TDZ error. Wrap the spies:
+  `const { spy } = vi.hoisted(() => ({ spy: vi.fn() }))`, then reference them
+  in both the `vi.mock` factory and the assertions. (Only needed when the test
+  asserts on a spy that the factory also returns; inline `vi.fn()` inside the
+  factory needs no hoist.)
 - **Node typings come from root `@types/node`.** `@types/node` is a ROOT
   devDependency; with NodeNext + no explicit `types` array it is auto-included
   in every package. Packages using Node globals (`setTimeout`, `AbortSignal`,
@@ -268,8 +299,10 @@ what we learned. Plans below numbered in execution order.
 - `2026-05-19-03-browser-foundation.md` ← ✅ DONE, merged to `main` (Plan 03:
   `chrome-setup` + `launcher`, 6 pkgs / 65 tests; cemented the DI-mockable
   browser + bounded-peer + concurrency/cleanup conventions).
-- `2026-05-19-04-navigation-data.md` ← detailed, ready to execute (Plan 04:
-  `interaction-helpers` + `navigation` + `extract`; first consumers of the
-  DI-mockable browser pattern; `navigation` composes `@technical-1/retry`).
+- `2026-05-19-04-navigation-data.md` ← ✅ DONE, merged to `main` (Plan 04:
+  `interaction-helpers` + `navigation` + `extract`; 9 pkgs / 95 tests).
+- `2026-05-19-05-anti-detection.md` ← detailed, ready to execute (Plan 05:
+  `stealth` + `fingerprint` + `human` + `proxy`; introduces the
+  `puppeteer-extra` real-dependency exception).
 - Subsequent plans written iteratively after each predecessor is verified.
 - Template plans saved under `Puppeteer-Template/docs/superpowers/plans/`.
