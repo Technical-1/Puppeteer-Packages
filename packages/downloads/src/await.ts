@@ -4,8 +4,13 @@ import { join } from "node:path";
 import type { Stats } from "node:fs";
 import type { AwaitDownloadOptions, DownloadResult } from "./types.js";
 
-/** Options including the test-injectable filesystem hooks (omitted from the public surface). */
-interface InternalOptions extends AwaitDownloadOptions {
+/**
+ * Test-only options including the filesystem hooks. NOT exported from the
+ * barrel, NOT part of the public type surface — tests import this type
+ * directly from `./await.js` and pass a wider opts via the
+ * `awaitDownloadForTesting` shim below.
+ */
+export interface InternalAwaitDownloadOptions extends AwaitDownloadOptions {
   readdir?: (dir: string) => Promise<string[]>;
   stat?: (path: string) => Promise<Stats>;
 }
@@ -23,13 +28,30 @@ function sleep(ms: number): Promise<void> {
  *
  * Throws `PptrKitError` (`retryable:true`) on timeout (default 30s).
  *
- * The `readdir`/`stat` overrides are for unit testing; production callers
- * leave them undefined.
+ * The public surface accepts only `timeoutMs` / `pollMs`. The
+ * `readdir`/`stat` injection seams used by unit tests are kept off the
+ * public type via the un-barreled `awaitDownloadForTesting` shim below.
  */
 export async function awaitDownload(
   dir: string,
   triggerFn: () => Promise<void> | void,
-  opts: InternalOptions = {},
+  opts: AwaitDownloadOptions = {},
+): Promise<DownloadResult> {
+  return awaitDownloadForTesting(dir, triggerFn, opts);
+}
+
+/**
+ * Internal implementation that accepts the wider `InternalAwaitDownloadOptions`
+ * (including `readdir`/`stat` overrides). Exported for unit tests only; NOT
+ * re-exported by the package barrel. Production consumers should call
+ * `awaitDownload` instead.
+ *
+ * @internal
+ */
+export async function awaitDownloadForTesting(
+  dir: string,
+  triggerFn: () => Promise<void> | void,
+  opts: InternalAwaitDownloadOptions = {},
 ): Promise<DownloadResult> {
   const pollMs = opts.pollMs ?? DEFAULT_POLL_MS;
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;

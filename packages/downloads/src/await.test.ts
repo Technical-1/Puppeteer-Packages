@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { awaitDownload } from "./await.js";
+import { awaitDownloadForTesting as awaitDownload } from "./await.js";
 
 describe("awaitDownload", () => {
   beforeEach(() => vi.useFakeTimers());

@@ -8,7 +8,7 @@ import { enableDownloads, awaitDownload } from "@technical-1/downloads";
 
 await enableDownloads(browser, "./downloads");
 
-const file = await awaitDownload(page, "./downloads", async () => {
+const file = await awaitDownload("./downloads", async () => {
   await page.click("#download-button");
 });
 
