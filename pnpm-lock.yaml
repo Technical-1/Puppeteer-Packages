@@ -259,6 +259,43 @@ importers:
         specifier: ^2.11.2
         version: 2.11.2(puppeteer-extra@3.3.6(puppeteer-core@24.43.1))
 
+  tests/integration:
+    dependencies:
+      '@technical-1/chrome-setup':
+        specifier: workspace:^
+        version: link:../../packages/chrome-setup
+      '@technical-1/downloads':
+        specifier: workspace:^
+        version: link:../../packages/downloads
+      '@technical-1/extract':
+        specifier: workspace:^
+        version: link:../../packages/extract
+      '@technical-1/interaction-helpers':
+        specifier: workspace:^
+        version: link:../../packages/interaction-helpers
+      '@technical-1/launcher':
+        specifier: workspace:^
+        version: link:../../packages/launcher
+      '@technical-1/navigation':
+        specifier: workspace:^
+        version: link:../../packages/navigation
+      '@technical-1/network':
+        specifier: workspace:^
+        version: link:../../packages/network
+      '@technical-1/pdf':
+        specifier: workspace:^
+        version: link:../../packages/pdf
+      '@technical-1/screenshots':
+        specifier: workspace:^
+        version: link:../../packages/screenshots
+      '@technical-1/session':
+        specifier: workspace:^
+        version: link:../../packages/session
+    devDependencies:
+      puppeteer-core:
+        specifier: ^24.4.0
+        version: 24.43.1
+
 packages:
 
   '@babel/runtime@7.29.2':
