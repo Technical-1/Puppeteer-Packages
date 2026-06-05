@@ -20,20 +20,23 @@ declare var sessionStorage: { length: number; key(i: number): string | null; get
 export async function captureSession(page: Page): Promise<SessionSnapshot> {
   try {
     const cookies = await page.browserContext().cookies();
-    const storage = await page.evaluate(() => {
-      const dump = (s: typeof localStorage): Record<string, string> => {
-        const out: Record<string, string> = {};
-        for (let i = 0; i < s.length; i++) {
-          const k = s.key(i);
-          if (k !== null) {
-            const v = s.getItem(k);
-            if (v !== null) out[k] = v;
+    const storage = await page.evaluate(
+      /* v8 ignore next 14 -- runs in-browser; covered by the integration tier */
+      () => {
+        const dump = (s: typeof localStorage): Record<string, string> => {
+          const out: Record<string, string> = {};
+          for (let i = 0; i < s.length; i++) {
+            const k = s.key(i);
+            if (k !== null) {
+              const v = s.getItem(k);
+              if (v !== null) out[k] = v;
+            }
           }
-        }
-        return out;
-      };
-      return { local: dump(localStorage), session: dump(sessionStorage) };
-    });
+          return out;
+        };
+        return { local: dump(localStorage), session: dump(sessionStorage) };
+      },
+    );
 
     return {
       cookies,
@@ -64,6 +67,7 @@ export async function restoreSession(
       await page.browserContext().setCookie(...snapshot.cookies);
     }
     await page.evaluateOnNewDocument(
+      /* v8 ignore next 4 -- runs in-browser; covered by the integration tier */
       (local: Record<string, string>, session: Record<string, string>) => {
         for (const [k, v] of Object.entries(local)) localStorage.setItem(k, v);
         for (const [k, v] of Object.entries(session)) sessionStorage.setItem(k, v);

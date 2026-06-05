@@ -14,6 +14,66 @@ function mockPage(overrides: Record<string, unknown> = {}): Page {
   } as unknown as Page;
 }
 
+// ---------------------------------------------------------------------------
+// Helpers for testing the in-page evaluate callback bodies (lines 18-19,
+// 27-28, 46-53 of extract.ts). The mocks above bypass the callback entirely;
+// here we capture the function reference that gets passed to page.evaluate
+// and invoke it directly with a fake `document` global.
+// ---------------------------------------------------------------------------
+
+/** Minimal in-page element shape used by the evaluate callbacks. */
+interface FakeEl {
+  textContent: string | null;
+  querySelectorAll: (s: string) => Iterable<FakeEl>;
+}
+
+/** Create a fake InPageElement that behaves like a real DOM node. */
+function fakeEl(textContent: string | null, children: FakeEl[] = []): FakeEl {
+  return {
+    textContent,
+    querySelectorAll: (_s: string) => children,
+  };
+}
+
+type FakeDocument = {
+  querySelector: (s: string) => FakeEl | null;
+  querySelectorAll: (s: string) => Iterable<FakeEl>;
+};
+
+/**
+ * Capture the callback that `page.evaluate` receives, then execute it with
+ * a fake `document` global so v8 can instrument the callback body.
+ */
+function captureEvaluatePage(
+  fakeDocument: FakeDocument,
+  resolveWith: unknown,
+): Page {
+  let capturedFn: ((...args: unknown[]) => unknown) | undefined;
+  let capturedArgs: unknown[] = [];
+  return {
+    evaluate: vi.fn().mockImplementation(
+      async (fn: (...args: unknown[]) => unknown, ...args: unknown[]) => {
+        capturedFn = fn;
+        capturedArgs = args;
+        // Temporarily install the fake document on globalThis so the callback body
+        // can reference `document` as a global (matching the in-browser contract).
+        const saved = (globalThis as Record<string, unknown>)["document"];
+        (globalThis as Record<string, unknown>)["document"] = fakeDocument;
+        try {
+          return capturedFn(...capturedArgs);
+        } finally {
+          if (saved === undefined) {
+            delete (globalThis as Record<string, unknown>)["document"];
+          } else {
+            (globalThis as Record<string, unknown>)["document"] = saved;
+          }
+        }
+      },
+    ),
+    _resolveWith: resolveWith, // for reference; not used by evaluate mock
+  } as unknown as Page;
+}
+
 describe("extractText", () => {
   it("returns trimmed text for a present selector", async () => {
     const page = mockPage({ evaluate: vi.fn().mockResolvedValue("  hi  ") });
@@ -23,6 +83,38 @@ describe("extractText", () => {
   it("returns empty string when the selector is absent", async () => {
     const page = mockPage({ evaluate: vi.fn().mockResolvedValue("") });
     expect(await extractText(page, "h1")).toBe("");
+  });
+
+  describe("in-page callback body (lines 18-19)", () => {
+    it("callback returns textContent when element is found", async () => {
+      const doc: FakeDocument = {
+        querySelector: () => fakeEl("  Hello  "),
+        querySelectorAll: () => [],
+      };
+      const page = captureEvaluatePage(doc, "  Hello  ");
+      const result = await extractText(page, "h1");
+      expect(result).toBe("Hello");
+    });
+
+    it("callback returns '' when element is absent (querySelector returns null)", async () => {
+      const doc: FakeDocument = {
+        querySelector: () => null,
+        querySelectorAll: () => [],
+      };
+      const page = captureEvaluatePage(doc, "");
+      const result = await extractText(page, "h1");
+      expect(result).toBe("");
+    });
+
+    it("callback returns '' when element has null textContent", async () => {
+      const doc: FakeDocument = {
+        querySelector: () => fakeEl(null),
+        querySelectorAll: () => [],
+      };
+      const page = captureEvaluatePage(doc, "");
+      const result = await extractText(page, "span");
+      expect(result).toBe("");
+    });
   });
 });
 
@@ -35,6 +127,29 @@ describe("extractAll", () => {
   it("returns [] when nothing matches", async () => {
     const page = mockPage({ evaluate: vi.fn().mockResolvedValue([]) });
     expect(await extractAll(page, ".x")).toEqual([]);
+  });
+
+  describe("in-page callback body (lines 27-28)", () => {
+    it("callback maps textContent of every matching node", async () => {
+      const doc: FakeDocument = {
+        querySelector: () => null,
+        querySelectorAll: () => [fakeEl(" a "), fakeEl("b ")],
+      };
+      const page = captureEvaluatePage(doc, []);
+      const result = await extractAll(page, ".x");
+      // Callback returns raw strings (not trimmed); extractAll trims them.
+      expect(result).toEqual(["a", "b"]);
+    });
+
+    it("callback falls back to '' when a node has null textContent (line 28 ternary false branch)", async () => {
+      const doc: FakeDocument = {
+        querySelector: () => null,
+        querySelectorAll: () => [fakeEl("text"), fakeEl(null)],
+      };
+      const page = captureEvaluatePage(doc, []);
+      const result = await extractAll(page, ".x");
+      expect(result).toEqual(["text", ""]);
+    });
   });
 });
 
@@ -56,6 +171,66 @@ describe("extractTable", () => {
     const page = mockPage({ evaluate: vi.fn().mockResolvedValue([]) });
     expect(await extractTable(page, "table#missing")).toEqual([]);
   });
+
+  describe("in-page callback body (lines 46-53)", () => {
+    it("callback returns [] when querySelector returns null (line 47 early return)", async () => {
+      const doc: FakeDocument = {
+        querySelector: () => null,
+        querySelectorAll: () => [],
+      };
+      const page = captureEvaluatePage(doc, []);
+      const result = await extractTable(page, "table#missing");
+      expect(result).toEqual([]);
+    });
+
+    it("callback maps rows × cells returning trimmed text strings (lines 48-52)", async () => {
+      const td1 = fakeEl(" A ");
+      const td2 = fakeEl(" B ");
+      const tr1 = fakeEl("", [td1, td2]);
+      // A table with one row, two cells.
+      const table = fakeEl("", [tr1]);
+      // Override querySelectorAll on the table element to return rows when "tr" is queried,
+      // and on each row to return cells when "td, th" is queried.
+      const tableEl = {
+        textContent: "",
+        querySelectorAll: (s: string) => (s === "tr" ? [tr1] : []),
+      };
+      const rowEl = {
+        textContent: "",
+        querySelectorAll: (s: string) => (s === "td, th" ? [td1, td2] : []),
+      };
+      const tableElWithRow = {
+        textContent: "",
+        querySelectorAll: (_s: string) => [rowEl],
+      };
+      const doc: FakeDocument = {
+        querySelector: () => tableElWithRow,
+        querySelectorAll: () => [],
+      };
+      const page = captureEvaluatePage(doc, []);
+      const result = await extractTable(page, "table");
+      expect(result).toEqual([["A", "B"]]);
+    });
+
+    it("callback falls back to '' when a cell has null textContent (line 51 ternary false branch)", async () => {
+      const cellWithNull = fakeEl(null);
+      const row = {
+        textContent: "",
+        querySelectorAll: (_s: string) => [cellWithNull],
+      };
+      const tableElWithNullCell = {
+        textContent: "",
+        querySelectorAll: (_s: string) => [row],
+      };
+      const doc: FakeDocument = {
+        querySelector: () => tableElWithNullCell,
+        querySelectorAll: () => [],
+      };
+      const page = captureEvaluatePage(doc, []);
+      const result = await extractTable(page, "table");
+      expect(result).toEqual([[""]]);
+    });
+  });
 });
 
 describe("extractSchema", () => {
@@ -74,5 +249,20 @@ describe("extractSchema", () => {
     const page = mockPage({ evaluate });
     expect(await extractSchema(page, {})).toEqual({});
     expect(evaluate).not.toHaveBeenCalled();
+  });
+
+  it("skips keys whose value is undefined (line 71 noUncheckedIndexedAccess guard)", async () => {
+    // noUncheckedIndexedAccess types schema[key] as string | undefined.
+    // In practice Object.keys() only returns present keys, but the guard on
+    // line 71 protects against any runtime case where a value is undefined.
+    // We trigger it by casting a sparse-value object as the schema type.
+    const evaluate = vi.fn().mockResolvedValue("text");
+    const page = mockPage({ evaluate });
+    // Cast: the real key "missing" maps to undefined at runtime.
+    const schema = { present: ".p", missing: undefined } as unknown as Record<string, string>;
+    const result = await extractSchema(page, schema);
+    // "present" is extracted; "missing" is skipped (undefined guard fires).
+    expect(result).toEqual({ present: "text" });
+    expect(evaluate).toHaveBeenCalledOnce();
   });
 });

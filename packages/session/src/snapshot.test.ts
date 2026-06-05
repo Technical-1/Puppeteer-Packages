@@ -70,6 +70,30 @@ describe("captureSession", () => {
       cause: expect.objectContaining({ message: "CDP closed" }),
     });
   });
+
+  it("returns empty localStorage and sessionStorage when page has none", async () => {
+    const page = pageMock({ cookies: [], storage: { local: {}, session: {} } });
+    const snap = await captureSession(page);
+    expect(snap.cookies).toEqual([]);
+    expect(snap.localStorage).toEqual({});
+    expect(snap.sessionStorage).toEqual({});
+  });
+
+  it("wraps page.evaluate errors in SessionError", async () => {
+    const ctx = {
+      cookies: vi.fn().mockResolvedValue([]),
+    } as unknown as BrowserContext;
+    const page = {
+      browserContext: () => ctx,
+      evaluate: vi.fn().mockRejectedValue(new Error("evaluate failed")),
+    } as unknown as Page;
+
+    await expect(captureSession(page)).rejects.toMatchObject({
+      name: "SessionError",
+      retryable: false,
+      cause: expect.objectContaining({ message: "evaluate failed" }),
+    });
+  });
 });
 
 describe("restoreSession", () => {
@@ -125,6 +149,51 @@ describe("restoreSession", () => {
       name: "SessionError",
       retryable: false,
       cause: expect.objectContaining({ message: "frame detached" }),
+    });
+  });
+
+  it("error message includes cookie count and storage key counts", async () => {
+    const ctx = {
+      setCookie: vi.fn().mockRejectedValue(new Error("timeout")),
+    } as unknown as BrowserContext;
+    const page = {
+      browserContext: () => ctx,
+      evaluateOnNewDocument: vi.fn(),
+    } as unknown as Page;
+
+    await expect(
+      restoreSession(page, {
+        cookies: sampleCookies,
+        localStorage: { a: "1", b: "2" },
+        sessionStorage: { c: "3" },
+        capturedAt: new Date().toISOString(),
+      }),
+    ).rejects.toMatchObject({
+      name: "SessionError",
+      message: expect.stringContaining("cookies: 1"),
+    });
+  });
+
+  it("evaluateOnNewDocument error is wrapped in SessionError", async () => {
+    const ctx = {
+      setCookie: vi.fn().mockResolvedValue(undefined),
+    } as unknown as BrowserContext;
+    const page = {
+      browserContext: () => ctx,
+      evaluateOnNewDocument: vi.fn().mockRejectedValue(new Error("eval failed")),
+    } as unknown as Page;
+
+    await expect(
+      restoreSession(page, {
+        cookies: sampleCookies,
+        localStorage: {},
+        sessionStorage: {},
+        capturedAt: new Date().toISOString(),
+      }),
+    ).rejects.toMatchObject({
+      name: "SessionError",
+      retryable: false,
+      cause: expect.objectContaining({ message: "eval failed" }),
     });
   });
 });

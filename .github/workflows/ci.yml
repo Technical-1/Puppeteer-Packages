@@ -50,6 +50,12 @@ jobs:
 
       - run: pnpm turbo run typecheck lint test build
 
+      # Coverage gate (once, on the node-22 leg): fails below the thresholds
+      # in vitest.config.ts (90% lines/branches/functions/statements).
+      - name: Coverage gate
+        if: matrix.node == 22
+        run: pnpm vitest run --coverage
+
       # Upload dist/ artifacts from the node-22 leg only so the integration
       # job can download them instead of rebuilding from scratch.
       - name: Upload dist artifacts

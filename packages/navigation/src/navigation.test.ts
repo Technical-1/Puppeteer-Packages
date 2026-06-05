@@ -96,4 +96,28 @@ describe("waitForNetworkIdle", () => {
       expect.objectContaining({ idleTime: 600, timeout: 12000 }),
     );
   });
+
+  it("applies default idleTime 500 and timeout 30000 when no opts are given (??-branches)", async () => {
+    const page = mockPage();
+    await waitForNetworkIdle(page);
+    expect(page.waitForNetworkIdle).toHaveBeenCalledWith(
+      expect.objectContaining({ idleTime: 500, timeout: 30000 }),
+    );
+  });
+
+  it("applies default idleTime 500 when only timeout is provided", async () => {
+    const page = mockPage();
+    await waitForNetworkIdle(page, { timeout: 5000 });
+    expect(page.waitForNetworkIdle).toHaveBeenCalledWith(
+      expect.objectContaining({ idleTime: 500, timeout: 5000 }),
+    );
+  });
+
+  it("applies default timeout 30000 when only idleTime is provided", async () => {
+    const page = mockPage();
+    await waitForNetworkIdle(page, { idleTime: 200 });
+    expect(page.waitForNetworkIdle).toHaveBeenCalledWith(
+      expect.objectContaining({ idleTime: 200, timeout: 30000 }),
+    );
+  });
 });

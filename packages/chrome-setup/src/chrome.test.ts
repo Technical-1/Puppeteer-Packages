@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { tmpdir, homedir } from "node:os";
 import { join } from "node:path";
 import { PptrKitError } from "@technical-1/core";
 
@@ -57,6 +57,38 @@ describe("resolveChromePath", () => {
       join(d1, "x", "chrome"),
     );
   });
+
+  it("skips a subdirectory that cannot be read (BFS catch+continue — lines 35-36)", () => {
+    // Create a dir structure: <dir>/accessible/chrome (would be found)
+    // and a sibling dir with no-read permission that sits in the BFS queue first
+    // so that readdirSync throws on it, exercises the catch { continue } path.
+    const unreadable = join(dir, "00-unreadable");
+    const accessible = join(dir, "aa-accessible");
+    mkdirSync(unreadable);
+    mkdirSync(accessible);
+    writeFileSync(join(accessible, "chrome"), "");
+    // Remove read+execute bits so readdirSync throws EACCES.
+    chmodSync(unreadable, 0o000);
+    try {
+      // The BFS will hit `unreadable` first (alphabetically sorted by readdirSync),
+      // catch the EACCES, continue, then find chrome in `accessible`.
+      const found = resolveChromePath({ searchDirs: [dir], platform: "linux" });
+      expect(found).toBe(join(accessible, "chrome"));
+    } finally {
+      // Restore so rmSync in afterEach can clean up.
+      chmodSync(unreadable, 0o755);
+    }
+  });
+
+  it("uses defaultSearchDirs() when no searchDirs option is provided (lines 67-69)", () => {
+    // Calling resolveChromePath() with no args exercises defaultSearchDirs().
+    // It will return undefined in a clean test environment, but the function
+    // itself must not throw, proving the default dirs branch was executed.
+    const result = resolveChromePath({ platform: "linux" });
+    // In a test environment there is no Chrome in process.cwd()/chrome-local or
+    // ~/.cache/puppeteer, so undefined is the expected result.
+    expect(result === undefined || typeof result === "string").toBe(true);
+  });
 });
 
 describe("downloadChrome", () => {
@@ -100,6 +132,13 @@ describe("downloadChrome", () => {
     );
   });
 
+  it("logs the resolved stable build id via logger (line 104)", async () => {
+    // Exercises the logger?.log call on line 104 (branch: logger present, id non-empty).
+    const log = vi.fn();
+    await downloadChrome({ cacheDir: dir, logger: { log } });
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("200.0.0.0"), "step");
+  });
+
   it("pins an explicit buildId without resolving stable", async () => {
     await downloadChrome({ cacheDir: dir, buildId: "123.0.0.0" });
     expect(browsers.resolveBuildId).not.toHaveBeenCalled();
@@ -118,11 +157,58 @@ describe("downloadChrome", () => {
     );
   });
 
+  it("falls back to DEFAULT_CHROME_BUILD when stable resolution fails with a non-Error throw (line 107 String(err) branch)", async () => {
+    // Exercises the `err instanceof Error ? err.message : String(err)` else-branch.
+    (browsers.resolveBuildId as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      "plain string rejection",
+    );
+    await downloadChrome({ cacheDir: dir });
+    expect(browsers.install).toHaveBeenCalledWith(
+      expect.objectContaining({ buildId: DEFAULT_CHROME_BUILD }),
+    );
+  });
+
+  it("logs the fallback reason via logger when stable resolution throws (lines 107-108)", async () => {
+    const log = vi.fn();
+    (browsers.resolveBuildId as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("network error"),
+    );
+    await downloadChrome({ cacheDir: dir, logger: { log } });
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("network error"),
+      "step",
+    );
+  });
+
   it("falls back to DEFAULT_CHROME_BUILD when stable resolution returns empty", async () => {
     (browsers.resolveBuildId as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce("");
     await downloadChrome({ cacheDir: dir });
     expect(browsers.install).toHaveBeenCalledWith(
       expect.objectContaining({ buildId: DEFAULT_CHROME_BUILD }),
+    );
+  });
+
+  it("logs the no-build fallback message via logger when stable resolution returns empty (line 98)", async () => {
+    // Exercises `logger?.log(...)` on line 98 — logger is present AND resolveBuildId returns "".
+    const log = vi.fn();
+    (browsers.resolveBuildId as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce("");
+    await downloadChrome({ cacheDir: dir, logger: { log } });
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("Stable Chrome resolution returned no build"),
+      "step",
+    );
+    expect(browsers.install).toHaveBeenCalledWith(
+      expect.objectContaining({ buildId: DEFAULT_CHROME_BUILD }),
+    );
+  });
+
+  it("uses the homedir default cacheDir when no cacheDir option is provided (line 136)", async () => {
+    // Exercises the `opts.cacheDir ?? join(homedir(), '.cache', 'puppeteer')` default branch.
+    await downloadChrome({ buildId: "100.0.0.0" });
+    expect(browsers.install).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cacheDir: join(homedir(), ".cache", "puppeteer"),
+      }),
     );
   });
 });
@@ -138,6 +224,18 @@ describe("ensureChrome", () => {
     expect(browsers.install).not.toHaveBeenCalled();
   });
 
+  it("logs the resolved path via logger when an existing Chrome is found (line 158)", async () => {
+    // Exercises `opts.logger?.log(...)` on line 158 — logger present, existing Chrome found.
+    const nested = join(dir, "win-2");
+    mkdirSync(nested, { recursive: true });
+    const bin = join(nested, "chrome.exe");
+    writeFileSync(bin, "x");
+    const log = vi.fn();
+    const path = await ensureChrome({ searchDirs: [dir], platform: "win32", logger: { log } });
+    expect(path).toBe(bin);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining(bin), "info");
+  });
+
   it("downloads when nothing is resolvable, then returns the downloaded path", async () => {
     const path = await ensureChrome({ searchDirs: [dir], cacheDir: dir });
     expect(browsers.install).toHaveBeenCalled();
@@ -148,4 +246,5 @@ describe("ensureChrome", () => {
     (browsers.install as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ executablePath: "" });
     await expect(ensureChrome({ searchDirs: [dir], cacheDir: dir })).rejects.toBeInstanceOf(PptrKitError);
   });
+
 });

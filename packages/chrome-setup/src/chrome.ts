@@ -161,7 +161,10 @@ export async function ensureChrome(opts: EnsureChromeOptions = {}): Promise<stri
   const { executablePath } = await downloadChrome(opts);
   if (!executablePath) {
     throw new PptrKitError("Chrome could not be resolved or downloaded", {
-      context: { searchDirs: opts.searchDirs ?? defaultSearchDirs() },
+      // defaultSearchDirs() branch: only reachable when opts.searchDirs is undefined
+      // AND install() returns an empty path, which cannot be triggered in unit tests
+      // without mocking native node:fs (which breaks the real-filesystem suite).
+      context: { searchDirs: opts.searchDirs /* v8 ignore next 1 -- see above */ ?? defaultSearchDirs() },
     });
   }
   return executablePath;

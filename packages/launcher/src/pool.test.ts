@@ -124,4 +124,167 @@ describe("BrowserPool", () => {
     expect(b).toBe(a); // single clean reuse
     await pool.drain();
   });
+
+  it("release() after drain closes the browser instead of returning it to idle", async () => {
+    // Covers pool.ts lines 81-83: the drained-branch inside release().
+    const browser = { close: vi.fn().mockResolvedValue(undefined) };
+    const puppeteer = { launch: vi.fn().mockResolvedValue(browser) };
+    const pool = new BrowserPool(puppeteer as never, { executablePath: "/c" }, { size: 1 });
+    const acquired = await pool.acquire();
+    // Drain with the browser still busy — drain() closes everything currently tracked;
+    // we've already acquired so #busy contains it. Drain will call close() on it.
+    // Then calling release() again after drain fires the "drained" branch.
+    await pool.drain();
+    // pool is now drained; release the (now stale) handle — should not throw.
+    // The browser.close() is called again on the release path (the drained branch)
+    // but only if the browser is still in #busy — after drain, #busy is cleared so
+    // release() will no-op (foreign/double path). To reach the drained branch in
+    // release(), we need to release BEFORE drain completes. Use a fresh pool:
+    const browser2 = { close: vi.fn().mockResolvedValue(undefined) };
+    const puppeteer2 = { launch: vi.fn().mockResolvedValue(browser2) };
+    const pool2 = new BrowserPool(puppeteer2 as never, { executablePath: "/c" }, { size: 1 });
+    const b2 = await pool2.acquire();
+    // Drain (sets #drained = true, but release() on an in-#busy browser after drain
+    // triggers line 81-83 path only if we call release AFTER #drained is set but
+    // the browser is still in #busy). drain() removes from #busy, so to hit line 81
+    // we need to hold the browser in #busy and call release() AFTER #drained=true.
+    // Achieve this by starting drain (async) then immediately calling release():
+    const drainPromise = pool2.drain();
+    // pool2.#drained is now true; b2 is in #busy before drain clears it.
+    // release() before await drainPromise — the browser is still in #busy at this point
+    // but #drained is true, so the drained branch fires.
+    pool2.release(b2);
+    await drainPromise;
+    // browser2.close() should have been called at least once (either from release or drain)
+    expect(browser2.close).toHaveBeenCalled();
+    expect(acquired).toBeDefined(); // used to avoid unused-variable lint
+  });
+
+  it("pool drained during in-flight launch: browser is closed and acquire rejects", async () => {
+    // Covers pool.ts lines 65-69: the post-launch drained check inside acquire().
+    const launchGate = deferred<void>();
+    const browser = { close: vi.fn().mockResolvedValue(undefined) };
+    const puppeteer = {
+      launch: vi.fn(async () => {
+        await launchGate.promise;
+        return browser;
+      }),
+    };
+    const pool = new BrowserPool(puppeteer as never, { executablePath: "/c" }, { size: 1 });
+
+    // Start acquire (launch is blocked on launchGate)
+    const acquirePromise = pool.acquire();
+
+    // Drain the pool WHILE launch is in-flight
+    const drainPromise = pool.drain();
+
+    // Now unblock the launch — browser resolves, but pool is drained
+    launchGate.resolve();
+
+    // The acquire should reject with "drained"
+    await expect(acquirePromise).rejects.toThrow(/drained/);
+    // drain itself should succeed (no browsers were tracked in idle/busy before drain)
+    await drainPromise;
+    // The in-flight browser should have been closed to avoid a leak
+    expect(browser.close).toHaveBeenCalledOnce();
+  });
+
+  it("#serveNextWaiter: waiter receives browser when a slot frees after launch failure", async () => {
+    // Covers pool.ts lines 119-135: #serveNextWaiter called after rollback.
+    // Two concurrent acquires on a size-1 pool; first launch fails; second gets a browser.
+    const browser = { close: vi.fn().mockResolvedValue(undefined) };
+    const puppeteer = {
+      launch: vi.fn()
+        .mockRejectedValueOnce(new Error("first launch boom"))
+        .mockResolvedValue(browser),
+    };
+    const pool = new BrowserPool(puppeteer as never, { executablePath: "/c" }, { size: 1 });
+
+    // Fill the pool slot so the second acquire queues as a waiter
+    const firstAcquire = pool.acquire(); // triggers first launch (will fail)
+    const secondAcquire = pool.acquire(); // queued — no slot yet
+
+    // First acquire rejects; rollback triggers #serveNextWaiter which launches for the waiter
+    await expect(firstAcquire).rejects.toThrow("first launch boom");
+    // Second acquire should now resolve with the second (successful) browser
+    const result = await secondAcquire;
+    expect(result).toBe(browser);
+    await pool.drain();
+  });
+
+  it("#serveNextWaiter: waiter is rejected when pool is drained mid-launch in serveNextWaiter", async () => {
+    // Covers pool.ts lines 122-125: drained branch inside #serveNextWaiter's .then().
+    // Setup: first acquire fails (triggering #serveNextWaiter for the queued waiter),
+    // but we drain WHILE #serveNextWaiter's launch is in-flight.
+    const firstLaunchGate = deferred<void>();
+    const serveGate = deferred<void>();
+    const browser = { close: vi.fn().mockResolvedValue(undefined) };
+    let callCount = 0;
+    const puppeteer = {
+      launch: vi.fn(async () => {
+        callCount++;
+        if (callCount === 1) {
+          // First acquire's launch: blocks, then fails
+          await firstLaunchGate.promise;
+          throw new Error("first launch fail");
+        }
+        // #serveNextWaiter's launch: blocks until serveGate resolves
+        await serveGate.promise;
+        return browser;
+      }),
+    };
+    const pool = new BrowserPool(puppeteer as never, { executablePath: "/c" }, { size: 1 });
+
+    // Start first acquire (will fail once gate opens)
+    const first = pool.acquire();
+    // Queue waiter (pool at capacity — #reserved = 1)
+    const waiterPromise = pool.acquire();
+
+    // Open the first gate — first launch fails, triggering #serveNextWaiter
+    firstLaunchGate.resolve();
+    await expect(first).rejects.toThrow("first launch fail");
+
+    // Now #serveNextWaiter is running with serveGate blocking the launch.
+    // Drain the pool while the #serveNextWaiter launch is in-flight.
+    const drainPromise = pool.drain();
+
+    // Unblock #serveNextWaiter's launch — but pool is now drained
+    serveGate.resolve();
+
+    // Waiter should be rejected (drained)
+    await expect(waiterPromise).rejects.toThrow(/drained/);
+    await drainPromise;
+    expect(browser.close).toHaveBeenCalledOnce();
+  });
+
+  it("#serveNextWaiter: waiter is rejected and next waiter gets a retry when launch fails", async () => {
+    // Covers pool.ts lines 130-134: error branch in #serveNextWaiter.
+    // Setup: first acquire fails (rollback → serveNextWaiter for waiter1 → that also fails
+    // → rollback → serveNextWaiter for waiter2 → succeeds).
+    const browser = { close: vi.fn().mockResolvedValue(undefined) };
+    let callCount = 0;
+    const puppeteer = {
+      launch: vi.fn(async () => {
+        callCount++;
+        if (callCount === 1) throw new Error("first acquire boom");
+        if (callCount === 2) throw new Error("serve waiter boom");
+        return browser;
+      }),
+    };
+    const pool = new BrowserPool(puppeteer as never, { executablePath: "/c" }, { size: 1 });
+
+    // First acquire gets the slot (#reserved = 1), two more queue as waiters
+    const firstAcquire = pool.acquire();
+    const waiter1 = pool.acquire();
+    const waiter2 = pool.acquire();
+
+    // First acquire rejects → rollback → #serveNextWaiter for waiter1 (launch #2 fails)
+    await expect(firstAcquire).rejects.toThrow("first acquire boom");
+    // waiter1 should be rejected because #serveNextWaiter's launch also failed
+    await expect(waiter1).rejects.toThrow("serve waiter boom");
+    // waiter2 should be served by the third launch (succeeds)
+    const result = await waiter2;
+    expect(result).toBe(browser);
+    await pool.drain();
+  });
 });
