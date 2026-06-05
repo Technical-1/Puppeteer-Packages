@@ -24,6 +24,7 @@ describe.skipIf(process.env["PPTR_IT"] !== "1")("navigation integration", () => 
         waitUntil: "domcontentloaded",
         timeout: 10_000,
       });
+      expect(res).not.toBeNull();
       expect(res?.status()).toBe(200);
       const title = await page.title();
       expect(title).toBe("Fixture Home");

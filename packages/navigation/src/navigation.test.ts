@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 import { goto, waitForNetworkIdle } from "./navigation.js";
-import type { Page } from "puppeteer-core";
+import type { Page, HTTPResponse } from "puppeteer-core";
+
+function fakeResponse(status = 200): HTTPResponse {
+  return { status: () => status } as unknown as HTTPResponse;
+}
 
 function mockPage(overrides: Record<string, unknown> = {}): Page {
   return {
@@ -70,8 +74,8 @@ describe("goto", () => {
     expect(gotoMock).toHaveBeenCalledTimes(1); // not retried — caller override won
   });
 
-  it("returns the HTTPResponse from page.goto", async () => {
-    const response = { status: () => 200 };
+  it("passes through the HTTPResponse object returned by page.goto", async () => {
+    const response = fakeResponse(200);
     const page = mockPage({ goto: vi.fn().mockResolvedValue(response) });
     const result = await goto(page, "https://x.test");
     expect(result).toBe(response);

@@ -20,7 +20,8 @@ export interface GotoOptions extends LoggerOption {
 
 /**
  * Navigate `page` to `url` with retry/backoff. Returns the `HTTPResponse`
- * Puppeteer received (or `null` for same-document navigations / `about:blank`).
+ * Puppeteer received, or `null` for same-document navigations, `about:blank`,
+ * or when the main-frame request is intercepted/aborted before a response arrives.
  *
  * Contract: "navigated" means `page.goto` did not network-error (DNS,
  * timeout, connection refused). An HTTP 4xx/5xx response does NOT fail
@@ -41,7 +42,7 @@ export async function goto(
   const waitUntil = opts.waitUntil ?? "load";
   const timeout = opts.timeout ?? 30000;
   opts.logger?.log(`navigating to ${url}`, "step");
-  let response: HTTPResponse | null;
+  let response: HTTPResponse | null = null;
   try {
     response = await withRetry(
       async () => page.goto(url, { waitUntil, timeout }),
