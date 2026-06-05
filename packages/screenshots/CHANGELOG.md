@@ -1,5 +1,11 @@
 # @technical-1/screenshots
 
+## 0.1.1
+
+### Patch Changes
+
+- 6ecf5eb: Clarify in each README that these are convenience wrappers — they add the suite's typed errors / injected logger / sane defaults for consistency, not new capability beyond the underlying puppeteer-core API or plugin.
+
 ## 0.1.0
 
 ### Minor Changes
