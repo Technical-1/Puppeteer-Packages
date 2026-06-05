@@ -75,3 +75,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # No NPM_TOKEN / NODE_AUTH_TOKEN — publish authenticates via OIDC.
+          # pnpm publish does NOT attach provenance automatically (unlike
+          # `npm publish`), so request it explicitly. Takes effect next release.
+          NPM_CONFIG_PROVENANCE: "true"
