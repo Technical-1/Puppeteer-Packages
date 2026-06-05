@@ -2,6 +2,8 @@
 
 Page → PDF helper with sane defaults for Puppeteer pages.
 
+> **Convenience wrapper.** This package wraps puppeteer-core's `page.pdf()` with defensible defaults (A4, 1 cm per-side margins) and the suite's typed errors (`PptrKitError`). It doesn't add new capability beyond `page.pdf()` — it exists so the rest of `@technical-1/*` composes through one consistent, typed surface. If you only need PDF export, you can call `page.pdf()` directly.
+
 ```ts
 import { pageToPdf } from "@technical-1/pdf";
 
