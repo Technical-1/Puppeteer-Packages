@@ -16,7 +16,15 @@ await pageToPdf(page, { path: "./report.pdf", format: "Letter" });
 
 If no options are passed, the helper sends `{ format: "A4", printBackground: true, margin: { top: "1cm", bottom: "1cm", left: "1cm", right: "1cm" } }` — chosen as defensible "looks-like-a-document" defaults. Callers override top-level fields freely.
 
-> **Note on `margin`:** the merge is **shallow** — supplying `{ margin: { top: "2cm" } }` replaces the entire `margin` default. Pass all four sides if you override it.
+### Margins
+
+`pageToPdf` deep-merges the `margin` object per side over a 1cm default. A
+partial margin keeps the unspecified sides at 1cm:
+
+`pageToPdf(page, { margin: { top: "2cm" } })`
+→ `{ top: "2cm", bottom: "1cm", left: "1cm", right: "1cm" }`
+
+(Pass all four sides explicitly to override every margin.)
 
 ## Errors
 

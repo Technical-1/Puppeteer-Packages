@@ -48,4 +48,14 @@ describe("pageToPdf", () => {
       cause: expect.objectContaining({ message: "not in headless mode" }),
     });
   });
+
+  it("deep-merges a partial margin, keeping unspecified sides at the 1cm default", async () => {
+    const page = pageMock();
+    await pageToPdf(page, { margin: { top: "2cm" } });
+    expect(page.pdf).toHaveBeenCalledWith(
+      expect.objectContaining({
+        margin: { top: "2cm", bottom: "1cm", left: "1cm", right: "1cm" },
+      }),
+    );
+  });
 });
