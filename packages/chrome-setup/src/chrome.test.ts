@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync, existsSync } from "node:fs";
 import { tmpdir, homedir } from "node:os";
 import { join } from "node:path";
 import { PptrKitError } from "@technical-1/core";
@@ -81,13 +81,15 @@ describe("resolveChromePath", () => {
   });
 
   it("uses defaultSearchDirs() when no searchDirs option is provided (lines 67-69)", () => {
-    // Calling resolveChromePath() with no args exercises defaultSearchDirs().
-    // It will return undefined in a clean test environment, but the function
-    // itself must not throw, proving the default dirs branch was executed.
+    // Calling resolveChromePath() with no searchDirs exercises the defaultSearchDirs() branch.
+    // Contract: returns either undefined (no Chrome found in the default dirs) or a path
+    // that actually exists on disk — never a phantom string.
     const result = resolveChromePath({ platform: "linux" });
-    // In a test environment there is no Chrome in process.cwd()/chrome-local or
-    // ~/.cache/puppeteer, so undefined is the expected result.
-    expect(result === undefined || typeof result === "string").toBe(true);
+    if (result === undefined) {
+      expect(result).toBeUndefined();
+    } else {
+      expect(existsSync(result)).toBe(true);
+    }
   });
 });
 

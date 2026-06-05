@@ -125,39 +125,21 @@ describe("BrowserPool", () => {
     await pool.drain();
   });
 
-  it("release() after drain closes the browser instead of returning it to idle", async () => {
-    // Covers pool.ts lines 81-83: the drained-branch inside release().
+  it("release() on an already-drained pool is a no-op (does not throw)", async () => {
+    // drain() synchronously clears #busy, so a release() called after await drain()
+    // hits the foreign/double-release guard and returns silently — no throw, no
+    // double-close. The test also confirms drain() itself resolves without error.
     const browser = { close: vi.fn().mockResolvedValue(undefined) };
     const puppeteer = { launch: vi.fn().mockResolvedValue(browser) };
     const pool = new BrowserPool(puppeteer as never, { executablePath: "/c" }, { size: 1 });
     const acquired = await pool.acquire();
-    // Drain with the browser still busy — drain() closes everything currently tracked;
-    // we've already acquired so #busy contains it. Drain will call close() on it.
-    // Then calling release() again after drain fires the "drained" branch.
-    await pool.drain();
-    // pool is now drained; release the (now stale) handle — should not throw.
-    // The browser.close() is called again on the release path (the drained branch)
-    // but only if the browser is still in #busy — after drain, #busy is cleared so
-    // release() will no-op (foreign/double path). To reach the drained branch in
-    // release(), we need to release BEFORE drain completes. Use a fresh pool:
-    const browser2 = { close: vi.fn().mockResolvedValue(undefined) };
-    const puppeteer2 = { launch: vi.fn().mockResolvedValue(browser2) };
-    const pool2 = new BrowserPool(puppeteer2 as never, { executablePath: "/c" }, { size: 1 });
-    const b2 = await pool2.acquire();
-    // Drain (sets #drained = true, but release() on an in-#busy browser after drain
-    // triggers line 81-83 path only if we call release AFTER #drained is set but
-    // the browser is still in #busy). drain() removes from #busy, so to hit line 81
-    // we need to hold the browser in #busy and call release() AFTER #drained=true.
-    // Achieve this by starting drain (async) then immediately calling release():
-    const drainPromise = pool2.drain();
-    // pool2.#drained is now true; b2 is in #busy before drain clears it.
-    // release() before await drainPromise — the browser is still in #busy at this point
-    // but #drained is true, so the drained branch fires.
-    pool2.release(b2);
-    await drainPromise;
-    // browser2.close() should have been called at least once (either from release or drain)
-    expect(browser2.close).toHaveBeenCalled();
-    expect(acquired).toBeDefined(); // used to avoid unused-variable lint
+    // drain() resolves cleanly (closes the acquired browser, no error)
+    await expect(pool.drain()).resolves.toBeUndefined();
+    expect(browser.close).toHaveBeenCalledTimes(1);
+    // release() of the stale handle after drain must not throw and must not
+    // produce a second close() call (the pool no longer tracks this browser).
+    expect(() => pool.release(acquired)).not.toThrow();
+    expect(browser.close).toHaveBeenCalledTimes(1); // still exactly once
   });
 
   it("pool drained during in-flight launch: browser is closed and acquire rejects", async () => {
