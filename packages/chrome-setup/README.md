@@ -12,10 +12,21 @@ const executablePath = await ensureChrome();
 
 - `resolveChromePath(opts?)` — pure, synchronous; searches known cache
   directories, returns a path or `undefined`.
-- `downloadChrome(opts?)` — downloads a pinned Chrome build, returns its
-  `executablePath`.
+- `downloadChrome(opts?)` — downloads Chrome (latest stable by default, or a
+  pinned build if `buildId` is supplied), returns its `executablePath`.
 - `ensureChrome(opts?)` — resolve, else download; throws a core `PptrKitError`
   if Chrome cannot be made available.
+
+### Chrome version
+
+`ensureChrome`/`downloadChrome` install the **latest stable** Chrome by default
+(resolved at install time), so fresh installs stay current. For reproducible
+installs, pass an explicit `buildId` (the pinned `DEFAULT_CHROME_BUILD` is
+exported for this purpose):
+
+`ensureChrome({ buildId: DEFAULT_CHROME_BUILD })`
+
+If stable resolution fails (offline), it falls back to `DEFAULT_CHROME_BUILD`.
 
 ## Requirements
 

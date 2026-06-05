@@ -20,10 +20,12 @@ describe.skipIf(process.env["PPTR_IT"] !== "1")("navigation integration", () => 
   it("goto navigates to fixture index.html and page contains known element", async () => {
     const page = await browser.newPage();
     try {
-      await goto(page, `${server.baseUrl}/`, {
+      const res = await goto(page, `${server.baseUrl}/`, {
         waitUntil: "domcontentloaded",
         timeout: 10_000,
       });
+      expect(res).not.toBeNull();
+      expect(res?.status()).toBe(200);
       const title = await page.title();
       expect(title).toBe("Fixture Home");
     } finally {

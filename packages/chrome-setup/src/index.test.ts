@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, expectTypeOf } from "vitest";
 import * as cs from "./index.js";
+import type { PlatformName } from "./index.js";
 
 describe("public surface", () => {
   it("exposes the resolve/download/ensure fns + the build constant only", () => {
@@ -10,5 +11,11 @@ describe("public surface", () => {
     expect(Object.keys(cs).sort()).toEqual(
       ["DEFAULT_CHROME_BUILD", "downloadChrome", "ensureChrome", "resolveChromePath"].sort(),
     );
+  });
+});
+
+describe("chrome-setup barrel re-exports", () => {
+  it("exports PlatformName equivalent to NodeJS.Platform", () => {
+    expectTypeOf<PlatformName>().toEqualTypeOf<NodeJS.Platform>();
   });
 });

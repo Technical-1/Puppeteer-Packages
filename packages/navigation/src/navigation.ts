@@ -1,4 +1,4 @@
-import type { Page } from "puppeteer-core";
+import type { Page, HTTPResponse } from "puppeteer-core";
 import { withRetry, type RetryOptions } from "@technical-1/retry";
 import { NavigationError } from "@technical-1/core";
 import type { LoggerOption } from "@technical-1/core";
@@ -19,12 +19,14 @@ export interface GotoOptions extends LoggerOption {
 }
 
 /**
- * Navigate `page` to `url` with retry/backoff.
+ * Navigate `page` to `url` with retry/backoff. Returns the `HTTPResponse`
+ * Puppeteer received, or `null` for same-document navigations, `about:blank`,
+ * or when the main-frame request is intercepted/aborted before a response arrives.
  *
  * Contract: "navigated" means `page.goto` did not network-error (DNS,
  * timeout, connection refused). An HTTP 4xx/5xx response does NOT fail
- * navigation — Puppeteer resolves on any received response. If you need to
- * gate on HTTP status, inspect the page after `goto` returns.
+ * navigation — Puppeteer resolves on any received response. Gate on status
+ * via the returned response: `const res = await goto(page, url); res?.status()`.
  *
  * A failure that survives all retries is rethrown as a `core`
  * `NavigationError` carrying the url + cause. That `NavigationError` has
@@ -36,15 +38,14 @@ export async function goto(
   page: Page,
   url: string,
   opts: GotoOptions = {},
-): Promise<void> {
+): Promise<HTTPResponse | null> {
   const waitUntil = opts.waitUntil ?? "load";
   const timeout = opts.timeout ?? 30000;
   opts.logger?.log(`navigating to ${url}`, "step");
+  let response: HTTPResponse | null = null;
   try {
-    await withRetry(
-      async () => {
-        await page.goto(url, { waitUntil, timeout });
-      },
+    response = await withRetry(
+      async () => page.goto(url, { waitUntil, timeout }),
       {
         logger: opts.logger,
         isRetryable: () => true,
@@ -55,6 +56,7 @@ export async function goto(
     throw new NavigationError(url, { cause: err, context: { url, waitUntil } });
   }
   opts.logger?.log(`loaded ${url}`, "success");
+  return response;
 }
 
 export interface NetworkIdleOptions {

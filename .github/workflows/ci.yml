@@ -88,12 +88,15 @@ jobs:
           path: packages
 
       # Cache the Chrome binary downloaded by ensureChrome() so we don't hit
-      # the CDN on every integration run. Key is OS + pinned build id.
+      # the CDN on every integration run.
       - name: Cache Chrome for Testing
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: ~/.cache/puppeteer
-          key: ${{ runner.os }}-chrome-144.0.7559.96
+          # Not pinned to a version: chrome-setup resolves latest-stable at
+          # install time. The cache accumulates builds; when stable advances,
+          # the new build is downloaded during the run (covered by hookTimeout).
+          key: ${{ runner.os }}-puppeteer-cache
 
       # Run integration tests explicitly with PPTR_IT=1.
       # ensureChrome() downloads Chrome on first run (cache miss) and resolves
