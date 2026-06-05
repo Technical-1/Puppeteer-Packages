@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "minor",
-  "ignore": ["examples", "@technical-1/integration-tests"]
+  "ignore": ["@technical-1/examples", "@technical-1/integration-tests"]
 }
