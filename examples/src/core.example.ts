@@ -17,7 +17,12 @@ import {
   SessionError,
 } from "@technical-1/core";
 
-// Base error — retryable defaults to false
+// Base error — retryable defaults to false (shown by the bare constructor call)
+const bareBase = new PptrKitError("base error");
+console.log(bareBase.name, bareBase.retryable);
+// => PptrKitError false
+
+// Passing retryable: true overrides the default
 const base = new PptrKitError("base error", {
   retryable: true,
   context: { op: "demo" },

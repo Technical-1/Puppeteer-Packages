@@ -15,14 +15,14 @@ import type { LogEvent } from "@technical-1/logger";
 
 // ── Console logger ────────────────────────────────────────────────────────────
 // minLevel: "warn" → "debug" and "info" messages are dropped.
-const console_ = createConsoleLogger({ minLevel: "warn" });
+const filteredLogger = createConsoleLogger({ minLevel: "warn" });
 
-console_.log("debug detail", "debug");   // suppressed
-console_.log("routine info", "info");    // suppressed
-console_.log("step started", "step");    // suppressed
-console_.log("something succeeded", "success"); // suppressed
-console_.log("watch out", "warn");       // printed via console.warn
-console_.log("hard failure", "error");   // printed via console.error
+filteredLogger.log("debug detail", "debug");   // suppressed
+filteredLogger.log("routine info", "info");    // suppressed
+filteredLogger.log("step started", "step");    // suppressed
+filteredLogger.log("something succeeded", "success"); // suppressed
+filteredLogger.log("watch out", "warn");       // printed via console.warn
+filteredLogger.log("hard failure", "error");   // printed via console.error
 
 // Default minLevel is "debug" — all levels pass through.
 const verbose = createConsoleLogger();
@@ -47,7 +47,7 @@ console.log("first entry:", collected[0]);
 // => first entry: { message: 'starting scrape', level: 'step' }
 
 // Multiple subscribers (no maxListeners warning — setMaxListeners(0))
-events.on("log", (_e: LogEvent) => { /* second subscriber */ });
+events.on("log", (_e: LogEvent) => { /* second subscriber — no-op */ });
 events.log("second subscriber test", "debug");
 console.log("total after second sub:", collected.length);
-// => total after second sub: 4 (only first subscriber pushed)
+// => total after second sub: 4 — second subscriber is a no-op; both fire, only the first pushes
