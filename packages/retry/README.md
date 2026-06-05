@@ -16,3 +16,15 @@ retries iff `opts.isRetryable(err)` is true (default: `err?.retryable === true`)
 and attempts remain; otherwise it rethrows. Delays grow
 `minDelayMs * factor^(attempt-1)`, capped at `maxDelayMs`, optionally jittered.
 An `AbortSignal` cancels pending waits.
+
+## Requirements
+
+This package's emitted TypeScript definitions reference `AbortSignal` (via
+`RetryOptions.signal`), which is not part of the `ES2022` lib. Your consumer
+project must have `@types/node` installed as a devDependency (or include
+`"DOM"` in your tsconfig `lib`):
+
+```bash
+npm install --save-dev @types/node
+# or: pnpm add -D @types/node
+```

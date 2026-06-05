@@ -22,7 +22,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@technical-1/core": "workspace:*",
+    "@technical-1/core": "workspace:^",
     "@puppeteer/browsers": "^2.4.0"
   }
 }

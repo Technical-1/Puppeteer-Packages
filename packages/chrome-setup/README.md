@@ -16,3 +16,14 @@ const executablePath = await ensureChrome();
   `executablePath`.
 - `ensureChrome(opts?)` — resolve, else download; throws a core `PptrKitError`
   if Chrome cannot be made available.
+
+## Requirements
+
+This package's emitted TypeScript definitions reference Node's built-in types
+(`NodeJS.Platform`, `process.platform`). Your consumer project must have
+`@types/node` installed as a devDependency:
+
+```bash
+npm install --save-dev @types/node
+# or: pnpm add -D @types/node
+```

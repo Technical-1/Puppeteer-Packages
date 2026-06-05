@@ -17,3 +17,14 @@ package defines the default: when `level` is omitted it is treated as
 ```ts
 import { createConsoleLogger, createEventLogger } from "@technical-1/logger";
 ```
+
+## Requirements
+
+This package's emitted TypeScript definitions reference Node's built-in types
+(`EventEmitter` from `node:events`). Your consumer project must have
+`@types/node` installed as a devDependency:
+
+```bash
+npm install --save-dev @types/node
+# or: pnpm add -D @types/node
+```

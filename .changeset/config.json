@@ -6,6 +6,6 @@
   "linked": [],
   "access": "public",
   "baseBranch": "main",
-  "updateInternalDependencies": "patch",
-  "ignore": []
+  "updateInternalDependencies": "minor",
+  "ignore": ["@technical-1/examples", "@technical-1/integration-tests"]
 }

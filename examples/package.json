@@ -1,0 +1,34 @@
+{
+  "name": "@technical-1/examples",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@technical-1/captcha": "workspace:^",
+    "@technical-1/chrome-setup": "workspace:^",
+    "@technical-1/config": "workspace:^",
+    "@technical-1/core": "workspace:^",
+    "@technical-1/downloads": "workspace:^",
+    "@technical-1/extract": "workspace:^",
+    "@technical-1/fingerprint": "workspace:^",
+    "@technical-1/human": "workspace:^",
+    "@technical-1/interaction-helpers": "workspace:^",
+    "@technical-1/launcher": "workspace:^",
+    "@technical-1/logger": "workspace:^",
+    "@technical-1/navigation": "workspace:^",
+    "@technical-1/network": "workspace:^",
+    "@technical-1/pdf": "workspace:^",
+    "@technical-1/proxy": "workspace:^",
+    "@technical-1/retry": "workspace:^",
+    "@technical-1/screenshots": "workspace:^",
+    "@technical-1/session": "workspace:^",
+    "@technical-1/stealth": "workspace:^"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.4.0"
+  }
+}

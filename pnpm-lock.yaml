@@ -36,10 +36,74 @@ importers:
         specifier: ^2.1.4
         version: 2.1.9(@types/node@22.19.19)
 
+  examples:
+    dependencies:
+      '@technical-1/captcha':
+        specifier: workspace:^
+        version: link:../packages/captcha
+      '@technical-1/chrome-setup':
+        specifier: workspace:^
+        version: link:../packages/chrome-setup
+      '@technical-1/config':
+        specifier: workspace:^
+        version: link:../packages/config
+      '@technical-1/core':
+        specifier: workspace:^
+        version: link:../packages/core
+      '@technical-1/downloads':
+        specifier: workspace:^
+        version: link:../packages/downloads
+      '@technical-1/extract':
+        specifier: workspace:^
+        version: link:../packages/extract
+      '@technical-1/fingerprint':
+        specifier: workspace:^
+        version: link:../packages/fingerprint
+      '@technical-1/human':
+        specifier: workspace:^
+        version: link:../packages/human
+      '@technical-1/interaction-helpers':
+        specifier: workspace:^
+        version: link:../packages/interaction-helpers
+      '@technical-1/launcher':
+        specifier: workspace:^
+        version: link:../packages/launcher
+      '@technical-1/logger':
+        specifier: workspace:^
+        version: link:../packages/logger
+      '@technical-1/navigation':
+        specifier: workspace:^
+        version: link:../packages/navigation
+      '@technical-1/network':
+        specifier: workspace:^
+        version: link:../packages/network
+      '@technical-1/pdf':
+        specifier: workspace:^
+        version: link:../packages/pdf
+      '@technical-1/proxy':
+        specifier: workspace:^
+        version: link:../packages/proxy
+      '@technical-1/retry':
+        specifier: workspace:^
+        version: link:../packages/retry
+      '@technical-1/screenshots':
+        specifier: workspace:^
+        version: link:../packages/screenshots
+      '@technical-1/session':
+        specifier: workspace:^
+        version: link:../packages/session
+      '@technical-1/stealth':
+        specifier: workspace:^
+        version: link:../packages/stealth
+    devDependencies:
+      puppeteer-core:
+        specifier: ^24.4.0
+        version: 24.43.1
+
   packages/captcha:
     dependencies:
       '@technical-1/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
     devDependencies:
       puppeteer-core:
@@ -52,13 +116,13 @@ importers:
         specifier: ^2.4.0
         version: 2.13.2
       '@technical-1/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
 
   packages/config:
     dependencies:
       '@technical-1/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
 
   packages/core: {}
@@ -66,7 +130,7 @@ importers:
   packages/downloads:
     dependencies:
       '@technical-1/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
     devDependencies:
       puppeteer-core:
@@ -94,7 +158,7 @@ importers:
   packages/interaction-helpers:
     dependencies:
       '@technical-1/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
     devDependencies:
       puppeteer-core:
@@ -104,7 +168,7 @@ importers:
   packages/launcher:
     dependencies:
       '@technical-1/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
     devDependencies:
       puppeteer-core:
@@ -114,16 +178,16 @@ importers:
   packages/logger:
     dependencies:
       '@technical-1/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
 
   packages/navigation:
     dependencies:
       '@technical-1/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@technical-1/retry':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../retry
     devDependencies:
       puppeteer-core:
@@ -133,7 +197,7 @@ importers:
   packages/network:
     dependencies:
       '@technical-1/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
     devDependencies:
       puppeteer-core:
@@ -143,7 +207,7 @@ importers:
   packages/pdf:
     dependencies:
       '@technical-1/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
     devDependencies:
       puppeteer-core:
@@ -153,7 +217,7 @@ importers:
   packages/proxy:
     dependencies:
       '@technical-1/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
     devDependencies:
       puppeteer-core:
@@ -163,13 +227,13 @@ importers:
   packages/retry:
     dependencies:
       '@technical-1/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
 
   packages/screenshots:
     dependencies:
       '@technical-1/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
     devDependencies:
       puppeteer-core:
@@ -179,7 +243,7 @@ importers:
   packages/session:
     dependencies:
       '@technical-1/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
     devDependencies:
       puppeteer-core:
@@ -194,6 +258,46 @@ importers:
       puppeteer-extra-plugin-stealth:
         specifier: ^2.11.2
         version: 2.11.2(puppeteer-extra@3.3.6(puppeteer-core@24.43.1))
+
+  tests/integration:
+    dependencies:
+      '@technical-1/chrome-setup':
+        specifier: workspace:^
+        version: link:../../packages/chrome-setup
+      '@technical-1/core':
+        specifier: workspace:^
+        version: link:../../packages/core
+      '@technical-1/downloads':
+        specifier: workspace:^
+        version: link:../../packages/downloads
+      '@technical-1/extract':
+        specifier: workspace:^
+        version: link:../../packages/extract
+      '@technical-1/interaction-helpers':
+        specifier: workspace:^
+        version: link:../../packages/interaction-helpers
+      '@technical-1/launcher':
+        specifier: workspace:^
+        version: link:../../packages/launcher
+      '@technical-1/navigation':
+        specifier: workspace:^
+        version: link:../../packages/navigation
+      '@technical-1/network':
+        specifier: workspace:^
+        version: link:../../packages/network
+      '@technical-1/pdf':
+        specifier: workspace:^
+        version: link:../../packages/pdf
+      '@technical-1/screenshots':
+        specifier: workspace:^
+        version: link:../../packages/screenshots
+      '@technical-1/session':
+        specifier: workspace:^
+        version: link:../../packages/session
+    devDependencies:
+      puppeteer-core:
+        specifier: ^24.4.0
+        version: 24.43.1
 
 packages:
 
