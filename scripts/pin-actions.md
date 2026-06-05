@@ -26,10 +26,10 @@ you on the `/commits/<ref>` endpoint). This is the SHA GitHub Actions uses.
 
 ```bash
 # Pattern (replace owner/repo and tag):
-gh api repos/actions/checkout/commits/v4.3.1 --jq .sha
+gh api repos/actions/checkout/commits/v6.0.3 --jq .sha
 
 # Verify the result is 40 hex chars:
-gh api repos/actions/checkout/commits/v4.3.1 --jq '.sha | length'
+gh api repos/actions/checkout/commits/v6.0.3 --jq '.sha | length'
 # → 40
 ```
 
@@ -39,12 +39,12 @@ gh api repos/actions/checkout/commits/v4.3.1 --jq '.sha | length'
 
 | Action | Version pinned | Commit SHA |
 |--------|---------------|------------|
-| `actions/checkout` | v4.3.1 | `34e114876b0b11c390a56381ad16ebd13914f8d5` |
-| `pnpm/action-setup` | v4.4.0 | `fc06bc1257f339d1d5d8b3a19a8cae5388b55320` |
-| `actions/setup-node` | v4.4.0 | `49933ea5288caeca8642d1e84afbd3f7d6820020` |
-| `actions/cache` | v4.2.3 | `5a3ec84eff668545956fd18022155c47e93e2684` |
-| `actions/upload-artifact` | v4.6.2 | `ea165f8d65b6e75b540449e92b4886f43607fa02` |
-| `actions/download-artifact` | v4.3.0 | `d3f86a106a0bac45b974a628896c90dbdf5c8093` |
+| `actions/checkout` | v6.0.3 | `df4cb1c069e1874edd31b4311f1884172cec0e10` |
+| `pnpm/action-setup` | v6.0.8 | `0e279bb959325dab635dd2c09392533439d90093` |
+| `actions/setup-node` | v6.4.0 | `48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e` |
+| `actions/cache` | v5.0.5 | `27d5ce7f107fe9357f9df03efb73ab90386fccae` |
+| `actions/upload-artifact` | v7.0.1 | `043fb46d1a93c77aae656e7c1c64a875d1fc6a0a` |
+| `actions/download-artifact` | v8.0.1 | `3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c` |
 | `changesets/action` | v1.9.0 | `a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d` |
 
 `changesets/action` is pinned here for reference — it is used in
