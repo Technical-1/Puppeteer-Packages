@@ -387,15 +387,25 @@ what we learned. Plans below numbered in execution order.
   sentinel-leak-guard test convention. 2captcha reference adapter via
   direct fetch — no SDK dep, no bundled credentials; apiKey URL-encoded
   and never logged or echoed in error payloads).
-- `2026-05-20-09-examples-integration-release.md` ← detailed, ready to
-  execute, **awaiting user authorization before execution**. Plan 09:
-  publish-prep — examples per package (typecheck-gated), integration tier
-  gated by `PPTR_IT=1` against a local fixture HTTP server, `release.yml`
-  Changesets pipeline, and the publish-blocking deferred items (sourcemap
-  dedup, SHA-pin actions, `workspace:^`, changeset-status CI guard,
-  `@types/node` consumer docs, npm publish checklist). 12 tasks. Externally
-  scoped: requires `@technical-1` npm scope + `NPM_TOKEN` GitHub Secret
-  before `release.yml` runs. NO new published packages.
+- `2026-05-20-09-examples-integration-release.md` ← ✅ DONE, merged to `main`
+  (Plan 09: publish-prep; no new published packages; 19 pkgs / 176 root tests
+  incl. 5 dedup-script tests + 3 ungated fixture-server tests; 9 `PPTR_IT=1`
+  real-Chrome integration tests verified 15/15). Shipped: `examples/`
+  (19 typecheck-gated demos), `tests/integration/` (`@technical-1/integration-tests`,
+  fixture HTTP server + shared launch helper, gated by `PPTR_IT=1`),
+  `release.yml` Changesets pipeline, and the publish-blocking deferred items
+  (sourcemap dedup via tsup `onSuccess`, SHA-pinned actions, `workspace:^`
+  internal deps, PR-only changeset-status CI guard, `@types/node` consumer
+  notes on chrome-setup/logger/retry/navigation). Cemented conventions:
+  prove a test isn't hollow by disabling the feature under test (caught a
+  `blockResources` integration test that passed with blocking off);
+  real-Chrome `beforeAll` needs `hookTimeout` ≥ cold-cache download time
+  (`testTimeout` does NOT cover hooks); `@types/node` is required by any
+  package whose `.d.ts` references `AbortSignal` (absent from `lib:ES2022`),
+  verified by compiling each `.d.ts` standalone; SHA-pin Actions via
+  `gh api repos/<o>/<r>/commits/<tag>`. Externally scoped (still TODO before
+  first publish): confirm `@technical-1` npm scope + add `NPM_TOKEN` secret
+  per `docs/npm-publish-checklist.md`.
 - Plans 10-12 are roadmap-only (not yet detailed):
   - Plan 10: pre-1.0 surface review (deferred surface decisions —
     fingerprint realism, navigation.goto return type, selective re-exports,
