@@ -17,6 +17,17 @@ const executablePath = await ensureChrome();
 - `ensureChrome(opts?)` — resolve, else download; throws a core `PptrKitError`
   if Chrome cannot be made available.
 
+### Chrome version
+
+`ensureChrome`/`downloadChrome` install the **latest stable** Chrome by default
+(resolved at install time), so fresh installs stay current. For reproducible
+installs, pass an explicit `buildId` (the pinned `DEFAULT_CHROME_BUILD` is
+exported for this purpose):
+
+`ensureChrome({ buildId: DEFAULT_CHROME_BUILD })`
+
+If stable resolution fails (offline), it falls back to `DEFAULT_CHROME_BUILD`.
+
 ## Requirements
 
 This package's emitted TypeScript definitions reference Node's built-in types

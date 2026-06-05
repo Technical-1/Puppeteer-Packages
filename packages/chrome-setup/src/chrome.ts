@@ -4,7 +4,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { Browser, detectBrowserPlatform, install } from "@puppeteer/browsers";
+import { Browser, detectBrowserPlatform, install, resolveBuildId } from "@puppeteer/browsers";
 import { PptrKitError } from "@technical-1/core";
 import type { LoggerOption } from "@technical-1/core";
 
@@ -79,8 +79,35 @@ export function resolveChromePath(opts: ResolveChromeOptions = {}): string | und
   return undefined;
 }
 
+/**
+ * Pick the build to install: an explicit `buildId` pins it (reproducible);
+ * otherwise resolve the latest stable Chrome. If stable resolution fails
+ * (offline / resolver error) fall back to the pinned DEFAULT_CHROME_BUILD
+ * rather than throwing.
+ */
+async function selectBuildId(
+  platform: NonNullable<ReturnType<typeof detectBrowserPlatform>>,
+  explicit: string | undefined,
+  logger: LoggerOption["logger"],
+): Promise<string> {
+  if (explicit) return explicit;
+  try {
+    const id = await resolveBuildId(Browser.CHROME, platform, "stable");
+    logger?.log(`Resolved latest stable Chrome ${id}`, "step");
+    return id;
+  } catch {
+    logger?.log(
+      `Stable Chrome resolution failed; using pinned ${DEFAULT_CHROME_BUILD}`,
+      "step",
+    );
+    return DEFAULT_CHROME_BUILD;
+  }
+}
+
 export interface DownloadChromeOptions extends LoggerOption {
-  /** Chrome build id. Default: DEFAULT_CHROME_BUILD. */
+  /** Chrome build id. Default: the latest stable Chrome, resolved at install
+   *  time. Pass an explicit version (e.g. DEFAULT_CHROME_BUILD) to pin a
+   *  reproducible build. */
   buildId?: string;
   /** Cache directory to install into. Default: `~/.cache/puppeteer`. */
   cacheDir?: string;
@@ -96,7 +123,7 @@ export async function downloadChrome(
       context: { phase: "detectBrowserPlatform" },
     });
   }
-  const buildId = opts.buildId ?? DEFAULT_CHROME_BUILD;
+  const buildId = await selectBuildId(platform, opts.buildId, opts.logger);
   const cacheDir = opts.cacheDir ?? join(homedir(), ".cache", "puppeteer");
   opts.logger?.log(`Downloading Chrome ${buildId} (${platform})`, "step");
   let installed;

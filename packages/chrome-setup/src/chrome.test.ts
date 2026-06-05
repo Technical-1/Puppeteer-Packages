@@ -8,10 +8,11 @@ vi.mock("@puppeteer/browsers", () => ({
   Browser: { CHROME: "chrome" },
   detectBrowserPlatform: vi.fn(() => "mac_arm"),
   install: vi.fn(async () => ({ executablePath: "/downloaded/chrome" })),
+  resolveBuildId: vi.fn(async () => "200.0.0.0"),
 }));
 
 import * as browsers from "@puppeteer/browsers";
-import { resolveChromePath, downloadChrome, ensureChrome } from "./chrome.js";
+import { resolveChromePath, downloadChrome, ensureChrome, DEFAULT_CHROME_BUILD } from "./chrome.js";
 
 let dir: string;
 beforeEach(() => {
@@ -89,6 +90,32 @@ describe("downloadChrome", () => {
       name: "PptrKitError",
       retryable: true,
     });
+  });
+
+  it("resolves the latest stable build when no buildId is given", async () => {
+    await downloadChrome({ cacheDir: dir });
+    expect(browsers.resolveBuildId).toHaveBeenCalledWith("chrome", "mac_arm", "stable");
+    expect(browsers.install).toHaveBeenCalledWith(
+      expect.objectContaining({ buildId: "200.0.0.0" }),
+    );
+  });
+
+  it("pins an explicit buildId without resolving stable", async () => {
+    await downloadChrome({ cacheDir: dir, buildId: "123.0.0.0" });
+    expect(browsers.resolveBuildId).not.toHaveBeenCalled();
+    expect(browsers.install).toHaveBeenCalledWith(
+      expect.objectContaining({ buildId: "123.0.0.0" }),
+    );
+  });
+
+  it("falls back to DEFAULT_CHROME_BUILD when stable resolution fails", async () => {
+    (browsers.resolveBuildId as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("offline"),
+    );
+    await downloadChrome({ cacheDir: dir });
+    expect(browsers.install).toHaveBeenCalledWith(
+      expect.objectContaining({ buildId: DEFAULT_CHROME_BUILD }),
+    );
   });
 });
 
