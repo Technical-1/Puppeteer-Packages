@@ -9,7 +9,7 @@
     "url": "git+https://github.com/Technical-1/Puppeteer-Packages.git"
   },
   "type": "module",
-  "packageManager": "pnpm@9.12.0",
+  "packageManager": "pnpm@10.34.1",
   "engines": {
     "node": ">=20"
   },
