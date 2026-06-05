@@ -264,6 +264,9 @@ importers:
       '@technical-1/chrome-setup':
         specifier: workspace:^
         version: link:../../packages/chrome-setup
+      '@technical-1/core':
+        specifier: workspace:^
+        version: link:../../packages/core
       '@technical-1/downloads':
         specifier: workspace:^
         version: link:../../packages/downloads
