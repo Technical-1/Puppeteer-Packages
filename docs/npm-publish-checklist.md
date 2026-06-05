@@ -73,3 +73,52 @@ Consumers can verify: `npm audit signatures @technical-1/<pkg>`.
 The changesets action's publish invocation also reads `NPM_TOKEN` from env.
 Both env vars are set to `${{ secrets.NPM_TOKEN }}` in the step so either
 code path authenticates correctly.
+
+## Last dry-run
+
+Dry-run performed on the P9T11 branch.
+
+### Monorepo state
+
+- **19 published packages**, all at `0.0.0` — would all bump to `0.1.0` (minor) on first release.
+- **8 pending changesets** (`.changeset/anti-detection.md`, `browser-foundation.md`, `captcha.md`, `initial-core.md`, `navigation-data.md`, `output-tier.md`, `state-traffic.md`, `utility-tier.md`).
+
+### `pnpm changeset version` preview
+
+`changeset version` ran cleanly:
+
+- All 19 package.json files bumped from `0.0.0` → `0.1.0`.
+- All 19 `CHANGELOG.md` files were generated with clean `## 0.1.0` sections sourced from the changeset descriptions.
+- `workspace:^` internal-dependency specifiers were **not rewritten** at `version` time — they remain `"workspace:^"` in package.json. Rewrite to concrete `^0.1.0` happens only at `pnpm changeset publish` time (pnpm rewrites specifiers when packing the tarball).
+- JSON formatting in package.json files was prettified (object literals expanded) but no semantic fields changed beyond the version bump.
+
+Full revert was performed immediately after inspection (`git checkout -- .changeset packages` + removal of untracked CHANGELOG.md files). `git status --porcelain` returned empty; all 8 changeset stubs confirmed restored.
+
+### `pnpm pack` tarball inspection (representative packages)
+
+All three packages were built via `pnpm turbo run build` (cached hit — 38ms) before packing.
+
+| Package | Tarball | Size |
+|---|---|---|
+| `@technical-1/core` | `technical-1-core-0.0.0.tgz` | 3 343 bytes |
+| `@technical-1/launcher` | `technical-1-launcher-0.0.0.tgz` | 6 104 bytes |
+| `@technical-1/captcha` | `technical-1-captcha-0.0.0.tgz` | 5 520 bytes |
+
+Each tarball contained exactly:
+
+```
+package/README.md
+package/package.json
+package/dist/index.cjs
+package/dist/index.cjs.map
+package/dist/index.d.cts
+package/dist/index.d.ts
+package/dist/index.js
+package/dist/index.js.map
+```
+
+**Present:** `dist/` with all 4 output files (ESM + CJS + dual `.d.ts`) plus sourcemaps, `package.json`, `README.md`.
+
+**Absent:** `src/`, `*.test.ts`, `tsconfig*.json`, `vitest.config*`, `node_modules/`.
+
+All `.tgz` files were deleted after inspection. `git status --porcelain` confirmed empty.
