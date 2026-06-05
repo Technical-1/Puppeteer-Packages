@@ -19,16 +19,44 @@ jobs:
       matrix:
         node: [20, 22]
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 9.12.0
-      - uses: actions/setup-node@v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ matrix.node }}
           cache: pnpm
+
       - run: pnpm install --frozen-lockfile
+
+      # Changeset-status guard: PR must include a changeset file. Runs on PRs
+      # only; push-to-main skips this (changesets are consumed on merge).
+      # Runs on both matrix legs — harmless duplication, avoids matrix-leg
+      # conditional fragility.
+      - name: Verify changeset present
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch origin "$BASE_REF" --depth=1
+          pnpm changeset status --since="origin/$BASE_REF"
+
       - run: pnpm turbo run typecheck lint test build
+
+      # Upload dist/ artifacts from the node-22 leg only so the integration
+      # job can download them instead of rebuilding from scratch.
+      - name: Upload dist artifacts
+        if: matrix.node == 22
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dist-packages
+          path: packages/*/dist
+          retention-days: 1
 
   integration:
     runs-on: ubuntu-latest
@@ -36,16 +64,39 @@ jobs:
     env:
       PPTR_IT: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 9.12.0
-      - uses: actions/setup-node@v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: pnpm
+
       - run: pnpm install --frozen-lockfile
-      - run: pnpm turbo run build
-      - run: pnpm turbo run test
-        # Integration specs are introduced in a later plan; this job runs the
-        # same suite with PPTR_IT=1 and stays green until those specs exist.
+
+      # Restore pre-built dist/ from the build job (node-22 leg) to avoid
+      # a full rebuild. Turbo build runs as fallback if the artifact is
+      # somehow absent (e.g., if this job re-runs after the artifact expires).
+      - name: Download dist artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: dist-packages
+          path: packages
+
+      # Cache the Chrome binary downloaded by ensureChrome() so we don't hit
+      # the CDN on every integration run. Key is OS + pinned build id.
+      - name: Cache Chrome for Testing
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ~/.cache/puppeteer
+          key: ${{ runner.os }}-chrome-144.0.7559.96
+
+      # Run integration tests explicitly with PPTR_IT=1.
+      # ensureChrome() downloads Chrome on first run (cache miss) and resolves
+      # from ~/.cache/puppeteer on subsequent runs. Tests launch with
+      # --no-sandbox (set inside the @technical-1/launcher package).
+      - name: Run integration tests
+        run: PPTR_IT=1 pnpm --filter @technical-1/integration-tests test
