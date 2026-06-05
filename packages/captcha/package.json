@@ -3,6 +3,11 @@
   "version": "0.0.0",
   "description": "Captcha-solver adapter interface plus a reference 2captcha adapter. No bundled credentials — consumer supplies the API key.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Technical-1/Puppeteer-Packages.git",
+    "directory": "packages/captcha"
+  },
   "type": "module",
   "sideEffects": false,
   "files": ["dist"],

@@ -30,5 +30,10 @@
   },
   "sideEffects": false,
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Technical-1/Puppeteer-Packages.git",
+    "directory": "packages/session"
+  },
   "publishConfig": { "access": "public" }
 }
