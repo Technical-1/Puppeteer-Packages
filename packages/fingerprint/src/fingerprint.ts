@@ -1,5 +1,9 @@
 import type { Page } from "puppeteer-core";
 
+// In-page global used inside the evaluateOnNewDocument callback (runs in
+// Chromium, not Node). Declare only what the callback touches — not the DOM lib.
+declare var navigator: { language: string; languages: readonly string[] };
+
 export interface Fingerprint {
   userAgent: string;
   viewport: { width: number; height: number };
@@ -59,24 +63,65 @@ export function randomFingerprint(rand: RandomFn = Math.random): Fingerprint {
 }
 
 /**
- * Apply a fingerprint to a page: UA (object form), viewport, timezone, and
- * the `Accept-Language` request header.
+ * Rewrite the UA's `Chrome/<version>` token to match the live browser, so the
+ * spoofed UA never disagrees with the real binary. Returns `ua` unchanged if
+ * the browser version can't be read or parsed (never throws).
+ */
+async function reconcileUserAgent(page: Page, ua: string): Promise<string> {
+  let raw: string;
+  try {
+    raw = await page.browser().version();
+  } catch {
+    return ua;
+  }
+  const version = raw.match(/[\d.]+$/)?.[0];
+  if (!version) return ua;
+  return ua.replace(/Chrome\/[\d.]+/, `Chrome/${version}`);
+}
+
+/**
+ * Apply a fingerprint to a page: UA (object form, version reconciled to the
+ * live browser), viewport, timezone, the `Accept-Language` request header, and
+ * an in-page override of `navigator.language`/`navigator.languages` so JS-level
+ * reads agree with the header/locale.
  *
- * v1 limitations: only the `Accept-Language` HTTP header is set — the in-page
- * `navigator.language`/`navigator.languages` are NOT overridden (a JS-level
- * fingerprinter could still read the launch locale). Also, `setExtraHTTPHeaders`
- * is full-replace: any extra headers a caller set on the page before
- * `applyFingerprint` are dropped — call this first, then layer your own.
+ * The UA's `Chrome/<version>` token is rewritten to match `page.browser()
+ * .version()` — so the spoofed UA tracks whatever Chrome is actually running
+ * (system Chrome, a newer download, etc.). If the version can't be parsed the
+ * generated UA is used unchanged (never throws).
+ *
+ * Notes: `setExtraHTTPHeaders` is full-replace — extra headers a caller set
+ * before `applyFingerprint` are dropped; call this first, then layer your own.
+ * The `navigator` override is registered via `evaluateOnNewDocument`, so it
+ * applies on the next (and every subsequent) navigation in this page — call
+ * `applyFingerprint` BEFORE navigating.
  */
 export async function applyFingerprint(
   page: Page,
   fp: Fingerprint,
 ): Promise<void> {
+  const userAgent = await reconcileUserAgent(page, fp.userAgent);
   // object form — the string overload is @deprecated in puppeteer-core 24.x
-  await page.setUserAgent({ userAgent: fp.userAgent });
+  await page.setUserAgent({ userAgent });
   await page.setViewport(fp.viewport);
   await page.emulateTimezone(fp.timezoneId);
   await page.setExtraHTTPHeaders({
     "Accept-Language": ACCEPT_LANGUAGE[fp.locale] ?? fp.locale,
   });
+  const primary = fp.locale.split("-")[0] ?? fp.locale;
+  const languages = [fp.locale, primary];
+  await page.evaluateOnNewDocument(
+    (locale: string, langs: string[]) => {
+      Object.defineProperty(navigator, "language", {
+        get: () => locale,
+        configurable: true,
+      });
+      Object.defineProperty(navigator, "languages", {
+        get: () => langs,
+        configurable: true,
+      });
+    },
+    fp.locale,
+    languages,
+  );
 }

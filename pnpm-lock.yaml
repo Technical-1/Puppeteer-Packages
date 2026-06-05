@@ -273,6 +273,9 @@ importers:
       '@technical-1/extract':
         specifier: workspace:^
         version: link:../../packages/extract
+      '@technical-1/fingerprint':
+        specifier: workspace:^
+        version: link:../../packages/fingerprint
       '@technical-1/interaction-helpers':
         specifier: workspace:^
         version: link:../../packages/interaction-helpers

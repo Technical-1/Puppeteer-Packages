@@ -6,12 +6,15 @@ import {
 } from "./fingerprint.js";
 import type { Page } from "puppeteer-core";
 
-function mockPage(): Page {
+function mockPage(overrides: Record<string, unknown> = {}): Page {
   return {
     setUserAgent: vi.fn().mockResolvedValue(undefined),
     setViewport: vi.fn().mockResolvedValue(undefined),
     emulateTimezone: vi.fn().mockResolvedValue(undefined),
     setExtraHTTPHeaders: vi.fn().mockResolvedValue(undefined),
+    evaluateOnNewDocument: vi.fn().mockResolvedValue(undefined),
+    browser: () => ({ version: vi.fn().mockResolvedValue("HeadlessChrome/144.0.7559.96") }),
+    ...overrides,
   } as unknown as Page;
 }
 
@@ -65,5 +68,52 @@ describe("applyFingerprint", () => {
       "Accept-Language": "en-US,en;q=0.9",
     });
     expect(page.setExtraHTTPHeaders).toHaveBeenCalledTimes(1);
+  });
+
+  it("reconciles the UA Chrome version to the live browser version", async () => {
+    const page = mockPage({
+      browser: () => ({ version: vi.fn().mockResolvedValue("HeadlessChrome/151.0.1.2") }),
+    });
+    const fp: Fingerprint = {
+      userAgent:
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+      viewport: { width: 1280, height: 800 },
+      locale: "en-US",
+      timezoneId: "America/New_York",
+    };
+    await applyFingerprint(page, fp);
+    expect(page.setUserAgent).toHaveBeenCalledWith({
+      userAgent: expect.stringContaining("Chrome/151.0.1.2"),
+    });
+  });
+
+  it("falls back to the generated UA when the browser version is unparseable", async () => {
+    const page = mockPage({
+      browser: () => ({ version: vi.fn().mockResolvedValue("weird-no-version") }),
+    });
+    const fp: Fingerprint = {
+      userAgent: "X Chrome/144.0.0.0 Y",
+      viewport: { width: 1280, height: 800 },
+      locale: "en-US",
+      timezoneId: "America/New_York",
+    };
+    await applyFingerprint(page, fp);
+    expect(page.setUserAgent).toHaveBeenCalledWith({ userAgent: "X Chrome/144.0.0.0 Y" });
+  });
+
+  it("overrides in-page navigator.language and languages via evaluateOnNewDocument", async () => {
+    const page = mockPage();
+    const fp: Fingerprint = {
+      userAgent: "X Chrome/144.0.0.0 Y",
+      viewport: { width: 1280, height: 800 },
+      locale: "de-DE",
+      timezoneId: "Europe/Berlin",
+    };
+    await applyFingerprint(page, fp);
+    expect(page.evaluateOnNewDocument).toHaveBeenCalledWith(
+      expect.any(Function),
+      "de-DE",
+      ["de-DE", "de"],
+    );
   });
 });

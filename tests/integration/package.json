@@ -12,6 +12,7 @@
     "@technical-1/core": "workspace:^",
     "@technical-1/launcher": "workspace:^",
     "@technical-1/chrome-setup": "workspace:^",
+    "@technical-1/fingerprint": "workspace:^",
     "@technical-1/navigation": "workspace:^",
     "@technical-1/interaction-helpers": "workspace:^",
     "@technical-1/extract": "workspace:^",
