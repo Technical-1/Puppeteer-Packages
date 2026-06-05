@@ -22,20 +22,23 @@ const VIEWPORTS = [
   { width: 1536, height: 864 },
   { width: 1280, height: 800 },
 ];
-const LOCALES = ["en-US", "en-GB", "de-DE", "fr-FR"];
-const TIMEZONES = [
-  "America/New_York",
-  "America/Los_Angeles",
-  "Europe/London",
-  "Europe/Berlin",
+interface GeoProfile {
+  locale: string;
+  timezoneId: string;
+  acceptLanguage: string;
+}
+
+/** Region-coherent profiles: locale ↔ timezone ↔ Accept-Language. */
+const PROFILES: readonly GeoProfile[] = [
+  { locale: "en-US", timezoneId: "America/New_York", acceptLanguage: "en-US,en;q=0.9" },
+  { locale: "en-GB", timezoneId: "Europe/London", acceptLanguage: "en-GB,en;q=0.9" },
+  { locale: "de-DE", timezoneId: "Europe/Berlin", acceptLanguage: "de-DE,de;q=0.9,en;q=0.8" },
+  { locale: "fr-FR", timezoneId: "Europe/Paris", acceptLanguage: "fr-FR,fr;q=0.9,en;q=0.8" },
 ];
 
-const ACCEPT_LANGUAGE: Record<string, string> = {
-  "en-US": "en-US,en;q=0.9",
-  "en-GB": "en-GB,en;q=0.9",
-  "de-DE": "de-DE,de;q=0.9,en;q=0.8",
-  "fr-FR": "fr-FR,fr;q=0.9,en;q=0.8",
-};
+const ACCEPT_LANGUAGE: Record<string, string> = Object.fromEntries(
+  PROFILES.map((p) => [p.locale, p.acceptLanguage]),
+);
 
 /** Random number source in [0, 1). Override for deterministic tests. */
 export type RandomFn = () => number;
@@ -49,16 +52,17 @@ function pick<T>(pool: readonly T[], rand: RandomFn): T {
 /**
  * Build a random fingerprint from curated pools (inject `rand` for tests).
  *
- * v1 limitation: UA / viewport / locale / timezone are picked independently,
- * so a combination can be geographically incoherent (e.g. a Windows UA with a
- * Europe/Berlin timezone and en-US locale).
+ * `locale` and `timezoneId` are drawn together from a region-coherent profile
+ * (so the combination is geographically plausible); `userAgent` (OS-based) and
+ * `viewport` (device-based) are drawn independently.
  */
 export function randomFingerprint(rand: RandomFn = Math.random): Fingerprint {
+  const profile = pick(PROFILES, rand);
   return {
     userAgent: pick(USER_AGENTS, rand),
     viewport: pick(VIEWPORTS, rand),
-    locale: pick(LOCALES, rand),
-    timezoneId: pick(TIMEZONES, rand),
+    locale: profile.locale,
+    timezoneId: profile.timezoneId,
   };
 }
 

@@ -44,7 +44,20 @@ describe("randomFingerprint", () => {
     expect(fp.userAgent).toContain("X11; Linux x86_64"); // last UA pool entry
     expect(fp.viewport).toEqual({ width: 1280, height: 800 }); // last viewport
     expect(fp.locale).toBe("fr-FR");
-    expect(fp.timezoneId).toBe("Europe/Berlin");
+    expect(fp.timezoneId).toBe("Europe/Paris"); // coherent with fr-FR
+  });
+
+  it("always pairs locale and timezone from the same geo profile", () => {
+    const coherent: Record<string, string> = {
+      "en-US": "America/New_York",
+      "en-GB": "Europe/London",
+      "de-DE": "Europe/Berlin",
+      "fr-FR": "Europe/Paris",
+    };
+    for (let i = 0; i < 200; i++) {
+      const fp = randomFingerprint();
+      expect(fp.timezoneId).toBe(coherent[fp.locale]);
+    }
   });
 });
 
