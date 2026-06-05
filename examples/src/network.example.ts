@@ -25,13 +25,13 @@ export async function demo(page: Page): Promise<void> {
   console.log("images and analytics blocked");
 
   // ── Capture all responses ─────────────────────────────────────────────────
-  // captureResponses returns a live collector; call .stop() to unsubscribe.
   const collector = await captureResponses(page);
   // … trigger navigation here in real usage …
   const sample: ResponseRecord | undefined = collector.responses[0];
   if (sample !== undefined) {
     console.log("first response:", sample.url, sample.status);
   }
+  // Call .stop() to unsubscribe the response listener when done collecting.
   collector.stop();
   console.log("total responses captured:", collector.responses.length);
 

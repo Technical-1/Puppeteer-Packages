@@ -18,8 +18,10 @@ import type { Page } from "puppeteer-core";
 export async function demo(page: Page): Promise<void> {
   // ── Construct the 2captcha adapter ────────────────────────────────────────
   // The API key comes from the environment — never hard-code a real key.
-  // The adapter closes over the key but does not log or surface it.
-  const apiKey: string = process.env["TWOCAPTCHA_API_KEY"] ?? "";
+  // Guard early so missing config surfaces as a clear error, not a confusing
+  // upstream API failure.
+  const apiKey = process.env["TWOCAPTCHA_API_KEY"];
+  if (!apiKey) throw new Error("TWOCAPTCHA_API_KEY is required");
 
   const opts: TwoCaptchaOptions = {
     pollMs: 5_000,     // check 2captcha every 5 s (their recommended cadence)
@@ -31,8 +33,11 @@ export async function demo(page: Page): Promise<void> {
   const solver: CaptchaSolver = createTwoCaptchaAdapter(apiKey, opts);
 
   // ── Solve a reCAPTCHA v2 challenge ────────────────────────────────────────
-  const siteKey = "6LeXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"; // public sitekey from the target page
-  const token = await solver.solveRecaptchaV2(siteKey, page.url());
+  // Each captcha provider/widget has its OWN distinct public site key embedded
+  // in the target page's HTML. Do NOT reuse one literal across reCAPTCHA,
+  // hCaptcha, and Turnstile — read the correct key for each widget.
+  const recaptchaSiteKey = "6LeXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"; // from target page
+  const token = await solver.solveRecaptchaV2(recaptchaSiteKey, page.url());
   console.log("token received (first 20 chars):", token.slice(0, 20) + "…");
 
   // ── Inject the token into the page ────────────────────────────────────────
@@ -42,10 +47,12 @@ export async function demo(page: Page): Promise<void> {
   console.log("token injected into #g-recaptcha-response");
 
   // ── hCaptcha and Turnstile follow the same pattern ────────────────────────
-  const hToken = await solver.solveHCaptcha(siteKey, page.url());
+  const hcaptchaSiteKey = "10000000-ffff-ffff-ffff-000000000001"; // hCaptcha test key
+  const hToken = await solver.solveHCaptcha(hcaptchaSiteKey, page.url());
   await injectToken(page, "[name='h-captcha-response']", hToken);
 
-  const tsToken = await solver.solveTurnstile(siteKey, page.url());
+  const turnstileSiteKey = "1x00000000000000000000AA"; // Turnstile test key
+  const tsToken = await solver.solveTurnstile(turnstileSiteKey, page.url());
   await injectToken(page, "[name='cf-turnstile-response']", tsToken);
   console.log("all captcha types demonstrated");
 }

@@ -24,8 +24,6 @@ export async function demo(browser: Browser, page: Page): Promise<void> {
   // ── Await a triggered download ────────────────────────────────────────────
   // awaitDownload snapshots the directory, invokes the trigger, then polls
   // every 100ms until a new non-.crdownload file appears.
-  // Only the public surface (awaitDownload) is used — awaitDownloadForTesting
-  // is an internal shim and is NOT exported from the barrel.
   const opts: AwaitDownloadOptions = {
     timeoutMs: 30_000,
     pollMs: 200,

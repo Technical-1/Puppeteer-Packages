@@ -15,8 +15,8 @@ import {
 import type { Page } from "puppeteer-core";
 
 export async function demo(page: Page): Promise<void> {
-  // ── Full-page screenshot to Buffer ────────────────────────────────────────
-  // No `path` option → returns a Uint8Array (puppeteer-core's Buffer equivalent).
+  // ── Full-page screenshot to Uint8Array ───────────────────────────────────
+  // No `path` option → returns a Uint8Array (the declared return type).
   const buf: Uint8Array = await screenshot(page, { fullPage: true });
   console.log("screenshot buffer bytes:", buf.byteLength);
 

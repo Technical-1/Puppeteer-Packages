@@ -12,8 +12,8 @@ import { captureSession, restoreSession, Session } from "@technical-1/session";
 import type { SessionSnapshot } from "@technical-1/session";
 import type { Page } from "puppeteer-core";
 
+// ── Primary demo: capture / restore ──────────────────────────────────────────
 export async function demo(page: Page): Promise<void> {
-  // ── Pure capture/restore ───────────────────────────────────────────────────
   // captureSession reads cookies (from browserContext) + localStorage +
   // sessionStorage. The snapshot is plain JSON-serializable data.
   const snap: SessionSnapshot = await captureSession(page);
@@ -27,8 +27,10 @@ export async function demo(page: Page): Promise<void> {
   console.log("session restored — navigate to matching origin to observe storage");
 }
 
-// ── Session store — multi-account workflows ─────────────────────────────────
-export async function storeDemo(
+// ── Secondary demo: Session store — multi-account workflows ──────────────────
+// The Session class is a label-keyed in-memory store layered on top of
+// captureSession / restoreSession; useful for rotating between accounts.
+export async function demoStore(
   loginPage: Page,
   targetPage: Page,
 ): Promise<void> {
