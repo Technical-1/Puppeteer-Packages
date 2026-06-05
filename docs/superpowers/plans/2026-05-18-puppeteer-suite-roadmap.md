@@ -406,10 +406,17 @@ what we learned. Plans below numbered in execution order.
   `gh api repos/<o>/<r>/commits/<tag>`. Externally scoped (still TODO before
   first publish): confirm `@technical-1` npm scope + add `NPM_TOKEN` secret
   per `docs/npm-publish-checklist.md`.
-- Plans 10-12 are roadmap-only (not yet detailed):
-  - Plan 10: pre-1.0 surface review (deferred surface decisions —
-    fingerprint realism, navigation.goto return type, selective re-exports,
-    pdf margin merge improvement).
+- `2026-06-04-10-surface-review.md` ← detailed, ready to execute, **awaiting
+  user authorization before execution**. Plan 10: pre-1.0 surface review
+  (spec: `docs/superpowers/specs/2026-06-04-plan-10-surface-review-design.md`).
+  8 tasks: `navigation.goto` returns `HTTPResponse | null`; re-export
+  `RetryOptions` (navigation) + `PlatformName` (chrome-setup); `pdf` per-side
+  margin deep-merge; `fingerprint` UA reconciled to the live browser version +
+  in-page `navigator.language(s)` override + geographically-coherent
+  `randomFingerprint`; `chrome-setup` installs the latest **stable** Chrome by
+  default (explicit `buildId` pins; offline falls back to
+  `DEFAULT_CHROME_BUILD`). No new published packages.
+- Plans 11-12 are roadmap-only (not yet detailed):
   - Plan 11: `electron-gui-app` template (Puppeteer-Template repo).
   - Plan 12: `cli-app` template + Puppeteer-Template repo polish.
 - Subsequent plans written iteratively after each predecessor is verified.
