@@ -33,12 +33,18 @@ describe.skipIf(process.env["PPTR_IT"] !== "1")("navigation integration", () => 
     }
   });
 
-  it("goto with bad URL and low retries throws NavigationError", async () => {
+  it("goto with a failing navigation and low retries throws NavigationError", async () => {
     const page = await browser.newPage();
     try {
-      // Port 1 on 127.0.0.1 should always refuse connections.
+      // Deterministically force a navigation network failure via request
+      // interception (abort the request) — no dependence on real-network
+      // connection-refusal timing, which is flaky in CI sandboxes.
+      await page.setRequestInterception(true);
+      page.on("request", (req) => {
+        req.abort().catch(() => {});
+      });
       await expect(
-        goto(page, "http://127.0.0.1:1/", {
+        goto(page, "http://example.invalid/", {
           waitUntil: "domcontentloaded",
           timeout: 2_000,
           retry: { retries: 1, minDelayMs: 50, maxDelayMs: 100 },
