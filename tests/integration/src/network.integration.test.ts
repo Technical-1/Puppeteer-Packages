@@ -8,6 +8,11 @@ import {
 import { launchFixtureBrowser, teardownFixtureBrowser } from "./helpers.js";
 import type { FixtureServer } from "./server.js";
 
+// In-page globals used inside page.evaluate callbacks (runs inside Chromium, not Node.js).
+declare var document: {
+  querySelector(sel: string): { complete: boolean; naturalWidth: number } | null;
+};
+
 describe.skipIf(process.env["PPTR_IT"] !== "1")("network integration", () => {
   let server: FixtureServer;
   let browser: Browser;
@@ -23,20 +28,11 @@ describe.skipIf(process.env["PPTR_IT"] !== "1")("network integration", () => {
   it("blockResources aborts image requests (hero.png returns net::ERR_ABORTED)", async () => {
     const page = await browser.newPage();
     try {
-      // Block all image resource types.
+      // Block all image resource types before navigation.
       await blockResources(page, ["image"]);
 
-      // Track image requests via the `request` event — more reliable than
-      // `requestfailed` which may not fire for interceptor-aborted requests.
-      const interceptedImageUrls: string[] = [];
-      page.on("request", (req) => {
-        if (req.resourceType() === "image") {
-          interceptedImageUrls.push(req.url());
-        }
-      });
-
-      // networkidle0 ensures the image request has been issued (and aborted)
-      // before we check — domcontentloaded would resolve before the <img> fires.
+      // networkidle0 ensures all pending sub-resources have been attempted
+      // (and aborted) before we inspect the page state.
       await page.goto(`${server.baseUrl}/image-page.html`, {
         waitUntil: "networkidle0",
         timeout: 15_000,
@@ -44,8 +40,17 @@ describe.skipIf(process.env["PPTR_IT"] !== "1")("network integration", () => {
 
       await unblockResources(page);
 
-      // Print the actual intercepted URLs on failure so the diff is informative.
-      expect(interceptedImageUrls.join(", ")).toContain("hero.png");
+      // Verify the OUTCOME of blocking: the <img> element exists in the DOM
+      // but its request was aborted by blockResources, so the image never
+      // loaded — img.complete is true (no longer pending) and naturalWidth
+      // is 0 (no pixel data was received). This assertion is hollow-proof:
+      // if blockResources is disabled the image loads successfully and
+      // naturalWidth becomes > 0, causing the test to fail.
+      const imageBlocked = await page.evaluate(() => {
+        const img = document.querySelector("img");
+        return img !== null && img.complete === true && img.naturalWidth === 0;
+      });
+      expect(imageBlocked).toBe(true);
     } finally {
       await page.close();
     }
