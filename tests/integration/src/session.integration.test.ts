@@ -1,29 +1,19 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import puppeteer from "puppeteer-core";
 import type { Browser } from "puppeteer-core";
 import { captureSession, restoreSession } from "@technical-1/session";
-import { ensureChrome } from "@technical-1/chrome-setup";
-import { startServer } from "./server.js";
+import { launchFixtureBrowser, teardownFixtureBrowser } from "./helpers.js";
 import type { FixtureServer } from "./server.js";
 
 describe.skipIf(process.env["PPTR_IT"] !== "1")("session integration", () => {
-  let executablePath: string;
   let server: FixtureServer;
   let browser: Browser;
 
   beforeAll(async () => {
-    executablePath = await ensureChrome();
-    server = await startServer();
-    browser = await puppeteer.launch({
-      executablePath,
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    ({ browser, server } = await launchFixtureBrowser());
   });
 
   afterAll(async () => {
-    await browser.close();
-    await server.close();
+    await teardownFixtureBrowser({ browser, server });
   });
 
   it("captureSession + restoreSession round-trips cookies and localStorage", async () => {
@@ -48,7 +38,7 @@ describe.skipIf(process.env["PPTR_IT"] !== "1")("session integration", () => {
       expect(snap.capturedAt).toBeTruthy();
       const cookieNames = snap.cookies.map((c) => c.name);
       expect(cookieNames).toContain("test-cookie");
-      expect(snap.localStorage["test-key"]).toBe("local-value");
+      expect(snap.localStorage).toHaveProperty("test-key", "local-value");
 
       // Open a new page and restore the snapshot.
       const newPage = await browser.newPage();

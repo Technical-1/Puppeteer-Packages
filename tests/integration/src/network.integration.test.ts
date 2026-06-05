@@ -1,33 +1,23 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import puppeteer from "puppeteer-core";
 import type { Browser } from "puppeteer-core";
 import {
   blockResources,
   unblockResources,
   captureResponses,
 } from "@technical-1/network";
-import { ensureChrome } from "@technical-1/chrome-setup";
-import { startServer } from "./server.js";
+import { launchFixtureBrowser, teardownFixtureBrowser } from "./helpers.js";
 import type { FixtureServer } from "./server.js";
 
 describe.skipIf(process.env["PPTR_IT"] !== "1")("network integration", () => {
-  let executablePath: string;
   let server: FixtureServer;
   let browser: Browser;
 
   beforeAll(async () => {
-    executablePath = await ensureChrome();
-    server = await startServer();
-    browser = await puppeteer.launch({
-      executablePath,
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    ({ browser, server } = await launchFixtureBrowser());
   });
 
   afterAll(async () => {
-    await browser.close();
-    await server.close();
+    await teardownFixtureBrowser({ browser, server });
   });
 
   it("blockResources aborts image requests (hero.png returns net::ERR_ABORTED)", async () => {
@@ -36,20 +26,26 @@ describe.skipIf(process.env["PPTR_IT"] !== "1")("network integration", () => {
       // Block all image resource types.
       await blockResources(page, ["image"]);
 
-      const failedUrls: string[] = [];
-      page.on("requestfailed", (req) => {
-        failedUrls.push(req.url());
+      // Track image requests via the `request` event — more reliable than
+      // `requestfailed` which may not fire for interceptor-aborted requests.
+      const interceptedImageUrls: string[] = [];
+      page.on("request", (req) => {
+        if (req.resourceType() === "image") {
+          interceptedImageUrls.push(req.url());
+        }
       });
 
-      // image-page.html references /hero.png — should be aborted.
+      // networkidle0 ensures the image request has been issued (and aborted)
+      // before we check — domcontentloaded would resolve before the <img> fires.
       await page.goto(`${server.baseUrl}/image-page.html`, {
-        waitUntil: "domcontentloaded",
+        waitUntil: "networkidle0",
+        timeout: 15_000,
       });
 
       await unblockResources(page);
 
-      const abortedImage = failedUrls.some((u) => u.includes("hero.png"));
-      expect(abortedImage).toBe(true);
+      // Print the actual intercepted URLs on failure so the diff is informative.
+      expect(interceptedImageUrls.join(", ")).toContain("hero.png");
     } finally {
       await page.close();
     }

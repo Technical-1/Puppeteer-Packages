@@ -1,29 +1,19 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import puppeteer from "puppeteer-core";
 import type { Browser } from "puppeteer-core";
 import { extractText, extractAll } from "@technical-1/extract";
-import { ensureChrome } from "@technical-1/chrome-setup";
-import { startServer } from "./server.js";
+import { launchFixtureBrowser, teardownFixtureBrowser } from "./helpers.js";
 import type { FixtureServer } from "./server.js";
 
 describe.skipIf(process.env["PPTR_IT"] !== "1")("extract integration", () => {
-  let executablePath: string;
   let server: FixtureServer;
   let browser: Browser;
 
   beforeAll(async () => {
-    executablePath = await ensureChrome();
-    server = await startServer();
-    browser = await puppeteer.launch({
-      executablePath,
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    ({ browser, server } = await launchFixtureBrowser());
   });
 
   afterAll(async () => {
-    await browser.close();
-    await server.close();
+    await teardownFixtureBrowser({ browser, server });
   });
 
   it("extractText returns the h1 text from index.html", async () => {

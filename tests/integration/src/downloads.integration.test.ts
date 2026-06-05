@@ -1,32 +1,26 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import puppeteer from "puppeteer-core";
 import type { Browser } from "puppeteer-core";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { enableDownloads, awaitDownload } from "@technical-1/downloads";
-import { ensureChrome } from "@technical-1/chrome-setup";
-import { startServer } from "./server.js";
+import { launchFixtureBrowser, teardownFixtureBrowser } from "./helpers.js";
 import type { FixtureServer } from "./server.js";
 
+// NOTE: `enableDownloads` configures the SHARED browser's CDP session download
+// directory. Adding a second download test would require resetting that dir
+// between tests. For simplicity this suite intentionally has a single download
+// test; the per-test tmpDir is cleaned in the finally block.
 describe.skipIf(process.env["PPTR_IT"] !== "1")("downloads integration", () => {
-  let executablePath: string;
   let server: FixtureServer;
   let browser: Browser;
 
   beforeAll(async () => {
-    executablePath = await ensureChrome();
-    server = await startServer();
-    browser = await puppeteer.launch({
-      executablePath,
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    ({ browser, server } = await launchFixtureBrowser());
   });
 
   afterAll(async () => {
-    await browser.close();
-    await server.close();
+    await teardownFixtureBrowser({ browser, server });
   });
 
   it("awaitDownload resolves with filename=sample.bin and size=1024", async () => {

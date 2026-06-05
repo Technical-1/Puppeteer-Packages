@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { startServer } from "./server.js";
 
+// This file tests the server itself, so each `it` deliberately starts and stops
+// its own server instance (no shared beforeAll). This contrasts with the integration
+// suites which share a single server across tests via beforeAll.
 describe("fixture server", () => {
   it("serves index.html on /", async () => {
     const s = await startServer();
