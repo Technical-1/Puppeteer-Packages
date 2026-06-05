@@ -11,7 +11,8 @@ import type { LoggerOption } from "@technical-1/core";
 /** Pinned Chrome-for-Testing build used when downloading. */
 export const DEFAULT_CHROME_BUILD = "144.0.7559.96";
 
-type PlatformName = NodeJS.Platform | "linux" | "darwin" | "win32";
+/** Node platform identifier (e.g. "darwin", "linux", "win32"). */
+export type PlatformName = NodeJS.Platform;
 
 function executableNames(platform: PlatformName): string[] {
   if (platform === "win32") return ["chrome.exe"];

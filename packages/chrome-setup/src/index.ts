@@ -8,4 +8,5 @@ export type {
   ResolveChromeOptions,
   DownloadChromeOptions,
   EnsureChromeOptions,
+  PlatformName,
 } from "./chrome.js";
