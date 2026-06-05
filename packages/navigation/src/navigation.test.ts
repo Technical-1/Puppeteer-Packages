@@ -69,6 +69,19 @@ describe("goto", () => {
     ).rejects.toMatchObject({ name: "NavigationError" });
     expect(gotoMock).toHaveBeenCalledTimes(1); // not retried — caller override won
   });
+
+  it("returns the HTTPResponse from page.goto", async () => {
+    const response = { status: () => 200 };
+    const page = mockPage({ goto: vi.fn().mockResolvedValue(response) });
+    const result = await goto(page, "https://x.test");
+    expect(result).toBe(response);
+  });
+
+  it("returns null when page.goto resolves null", async () => {
+    const page = mockPage({ goto: vi.fn().mockResolvedValue(null) });
+    const result = await goto(page, "https://x.test");
+    expect(result).toBeNull();
+  });
 });
 
 describe("waitForNetworkIdle", () => {
