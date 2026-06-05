@@ -35,11 +35,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # Changeset-status guard: PR must include a changeset file. Runs on PRs
-      # only; push-to-main skips this (changesets are consumed on merge).
+      # only; push-to-main skips this (changesets are consumed on merge). The
+      # auto-generated Changesets "Version PR" (head changeset-release/*) is
+      # exempt — it intentionally has no changesets (it consumes them).
       # Runs on both matrix legs — harmless duplication, avoids matrix-leg
       # conditional fragility.
       - name: Verify changeset present
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'changeset-release/')
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
