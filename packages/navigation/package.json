@@ -22,8 +22,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@technical-1/core": "workspace:*",
-    "@technical-1/retry": "workspace:*"
+    "@technical-1/core": "workspace:^",
+    "@technical-1/retry": "workspace:^"
   },
   "peerDependencies": { "puppeteer-core": ">=22 <25" },
   "devDependencies": { "puppeteer-core": "^24.4.0" }
