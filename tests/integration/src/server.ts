@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, extname, join, sep } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES = join(__dirname, "..", "fixtures");
@@ -29,23 +29,39 @@ export async function startServer(port: number = 0): Promise<FixtureServer> {
       const fileName =
         url.pathname === "/" ? "index.html" : url.pathname.slice(1);
       const filePath = join(FIXTURES, fileName);
+      if (filePath !== FIXTURES && !filePath.startsWith(FIXTURES + sep)) {
+        res.writeHead(403, { "Content-Type": "text/plain" });
+        res.end("Forbidden");
+        return;
+      }
       const data = await readFile(filePath);
-      const ext = fileName.split(".").pop();
-      const type =
-        ext === "html" ? "text/html; charset=utf-8" : "application/octet-stream";
+      const mimeMap: Record<string, string> = {
+        html: "text/html; charset=utf-8",
+        css: "text/css; charset=utf-8",
+        js: "text/javascript; charset=utf-8",
+        json: "application/json; charset=utf-8",
+        png: "image/png",
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        svg: "image/svg+xml",
+      };
+      const ext = extname(filePath).slice(1).toLowerCase();
+      const type = mimeMap[ext] ?? "application/octet-stream";
       res.writeHead(200, {
         "Content-Type": type,
         "Content-Length": String(data.length),
       });
       res.end(data);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+    } catch {
       res.writeHead(404, { "Content-Type": "text/plain" });
-      res.end(`Not found: ${message}`);
+      res.end("Not found");
     }
   });
 
-  await new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve));
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(port, "127.0.0.1", resolve);
+  });
   const addr = server.address();
   if (!addr || typeof addr === "string")
     throw new Error("server.address() returned unexpected shape");
