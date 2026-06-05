@@ -117,6 +117,14 @@ describe("downloadChrome", () => {
       expect.objectContaining({ buildId: DEFAULT_CHROME_BUILD }),
     );
   });
+
+  it("falls back to DEFAULT_CHROME_BUILD when stable resolution returns empty", async () => {
+    (browsers.resolveBuildId as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce("");
+    await downloadChrome({ cacheDir: dir });
+    expect(browsers.install).toHaveBeenCalledWith(
+      expect.objectContaining({ buildId: DEFAULT_CHROME_BUILD }),
+    );
+  });
 });
 
 describe("ensureChrome", () => {

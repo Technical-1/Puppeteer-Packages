@@ -86,6 +86,7 @@ export function resolveChromePath(opts: ResolveChromeOptions = {}): string | und
  * rather than throwing.
  */
 async function selectBuildId(
+  // NonNullable<…> narrows out undefined post-guard and avoids importing the BrowserPlatform enum.
   platform: NonNullable<ReturnType<typeof detectBrowserPlatform>>,
   explicit: string | undefined,
   logger: LoggerOption["logger"],
@@ -93,11 +94,19 @@ async function selectBuildId(
   if (explicit) return explicit;
   try {
     const id = await resolveBuildId(Browser.CHROME, platform, "stable");
+    if (!id) {
+      logger?.log(
+        `Stable Chrome resolution returned no build; using pinned ${DEFAULT_CHROME_BUILD}`,
+        "step",
+      );
+      return DEFAULT_CHROME_BUILD;
+    }
     logger?.log(`Resolved latest stable Chrome ${id}`, "step");
     return id;
-  } catch {
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
     logger?.log(
-      `Stable Chrome resolution failed; using pinned ${DEFAULT_CHROME_BUILD}`,
+      `Stable Chrome resolution failed (${reason}); using pinned ${DEFAULT_CHROME_BUILD}`,
       "step",
     );
     return DEFAULT_CHROME_BUILD;
