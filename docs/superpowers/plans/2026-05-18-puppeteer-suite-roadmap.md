@@ -406,16 +406,22 @@ what we learned. Plans below numbered in execution order.
   `gh api repos/<o>/<r>/commits/<tag>`. Externally scoped (still TODO before
   first publish): confirm `@technical-1` npm scope + add `NPM_TOKEN` secret
   per `docs/npm-publish-checklist.md`.
-- `2026-06-04-10-surface-review.md` ← detailed, ready to execute, **awaiting
-  user authorization before execution**. Plan 10: pre-1.0 surface review
-  (spec: `docs/superpowers/specs/2026-06-04-plan-10-surface-review-design.md`).
-  8 tasks: `navigation.goto` returns `HTTPResponse | null`; re-export
-  `RetryOptions` (navigation) + `PlatformName` (chrome-setup); `pdf` per-side
-  margin deep-merge; `fingerprint` UA reconciled to the live browser version +
-  in-page `navigator.language(s)` override + geographically-coherent
-  `randomFingerprint`; `chrome-setup` installs the latest **stable** Chrome by
-  default (explicit `buildId` pins; offline falls back to
-  `DEFAULT_CHROME_BUILD`). No new published packages.
+- `2026-06-04-10-surface-review.md` ← ✅ DONE, merged to `main` (Plan 10:
+  pre-1.0 surface review; spec:
+  `docs/superpowers/specs/2026-06-04-plan-10-surface-review-design.md`; no new
+  published packages; 189 root tests / 16 `PPTR_IT=1` integration tests incl. a
+  new fingerprint real-Chrome test). Shipped: `navigation.goto` returns
+  `HTTPResponse | null`; `RetryOptions` (navigation) + `PlatformName`
+  (chrome-setup, tidied to `NodeJS.Platform`) re-exported; `pdf` per-side margin
+  deep-merge; `fingerprint` UA reconciled to the live `browser.version()`
+  (token-anchored, silent fallback) + in-page `navigator.language(s)` override
+  via `evaluateOnNewDocument` + geographically-coherent `randomFingerprint`
+  (locale↔timezone profiles); `chrome-setup` installs the latest **stable**
+  Chrome by default (explicit `buildId` pins; empty/offline resolution falls
+  back to `DEFAULT_CHROME_BUILD`), CI Chrome cache key de-pinned. Cemented:
+  prove a fingerprint test isn't hollow by asserting the FULL live version
+  (not just major); anti-detection UA should track the live binary, not a
+  static constant.
 - Plans 11-12 are roadmap-only (not yet detailed):
   - Plan 11: `electron-gui-app` template (Puppeteer-Template repo).
   - Plan 12: `cli-app` template + Puppeteer-Template repo polish.
