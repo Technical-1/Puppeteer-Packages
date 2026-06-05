@@ -1,0 +1,79 @@
+# release.yml — Changesets publish pipeline
+#
+# PREREQUISITES (must exist BEFORE first run):
+#   1. @technical-1 npm scope + NPM_TOKEN secret
+#      See docs/npm-publish-checklist.md for the full pre-flight checklist.
+#
+# WORKSPACE PROTOCOL — workspace:^ rewrite:
+#   All packages declare internal deps as `workspace:^`. When
+#   `pnpm changeset publish` (or `pnpm publish`) runs, pnpm rewrites every
+#   `workspace:^` specifier to the concrete `^<resolved-version>` before
+#   packing the tarball. This means npm consumers automatically satisfy a
+#   newer compatible internal dep without any manual pin updates. This is the
+#   conscious protocol decision from Plan 09 / P9T1 — surfaced here so
+#   release reviewers understand why cross-package deps appear as `^x.y.z`
+#   in the published package.json rather than `workspace:^`.
+#
+# NPM AUTH NOTE:
+#   setup-node with `registry-url` writes ~/.npmrc containing:
+#     //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
+#   changesets/action additionally reads NPM_TOKEN from env for its own
+#   publish invocation. To satisfy both paths we pass the same secret as
+#   BOTH NODE_AUTH_TOKEN and NPM_TOKEN in the changesets step env — this is
+#   the canonical changesets-in-CI pattern widely used in the ecosystem.
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write  # npm provenance
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          version: 9.12.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+          # registry-url writes ~/.npmrc referencing ${NODE_AUTH_TOKEN}
+          # so `pnpm changeset publish` picks up the token automatically.
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm turbo run build
+
+      - name: Create Release Pull Request or Publish
+        id: changesets
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
+        with:
+          publish: pnpm changeset publish
+          version: pnpm changeset version
+          commit: "chore: release packages"
+          title: "Release"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # NPM_TOKEN  — read by changesets/action's internal publish logic
+          # NODE_AUTH_TOKEN — read by the ~/.npmrc written by setup-node above;
+          #   both point at the same secret so either code path authenticates.
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
