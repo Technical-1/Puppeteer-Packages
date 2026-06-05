@@ -4,18 +4,35 @@ import { join } from "node:path";
 /**
  * Collapse runs of identical `//# sourceMappingURL=...` lines to a single
  * occurrence. tsup 8.5.x emits the directive twice; this normalizes the
- * output for `npm pack`. Idempotent.
+ * output for `npm pack`. Idempotent. Handles N>=2 consecutive identical lines
+ * by looping until stable (only collapses adjacent-identical lines; differing
+ * URLs on separate entry-points are left untouched).
  */
 export function dedupSourcemapComment(text) {
-  return text.replace(
-    /^(\/\/# sourceMappingURL=.+)\r?\n\1(\r?\n|$)/gm,
-    "$1$2",
-  );
+  let prev;
+  do {
+    prev = text;
+    text = text.replace(
+      /^(\/\/# sourceMappingURL=.+)\r?\n\1(\r?\n|$)/gm,
+      "$1$2",
+    );
+  } while (text !== prev);
+  return text;
 }
 
-/** Apply the dedup to every `index.{js,cjs}` under the given dist directory. */
+/**
+ * Apply the dedup to every `.js` and `.cjs` file in the dist directory
+ * (intentionally includes chunk files, not just entry points). A missing dist
+ * directory is treated as a clean no-op; any other error is rethrown.
+ */
 export async function dedupInDist(distDir) {
-  const entries = await readdir(distDir);
+  let entries;
+  try {
+    entries = await readdir(distDir);
+  } catch (err) {
+    if (err.code === "ENOENT") return;
+    throw err;
+  }
   for (const name of entries) {
     if (!name.endsWith(".js") && !name.endsWith(".cjs")) continue;
     const path = join(distDir, name);
