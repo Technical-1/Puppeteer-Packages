@@ -20,13 +20,14 @@ describe.skipIf(process.env["PPTR_IT"] !== "1")("fingerprint integration", () =>
       await applyFingerprint(page, fp);
       await page.goto(`${ctx.server.baseUrl}/`, { waitUntil: "load" });
 
-      const liveMajor = (await ctx.browser.version()).match(/[\d.]+$/)?.[0]?.split(".")[0];
+      const liveVersion = (await ctx.browser.version()).match(/Chrome\/([\d.]+)/)?.[1];
       const result = await page.evaluate(() => ({
         language: navigator.language,
         ua: navigator.userAgent,
       }));
       expect(result.language).toBe("de-DE");
-      expect(result.ua).toContain(`Chrome/${liveMajor}`);
+      expect(liveVersion).toBeTruthy();
+      expect(result.ua).toContain(`Chrome/${liveVersion}`);
     } finally {
       await page.close();
     }

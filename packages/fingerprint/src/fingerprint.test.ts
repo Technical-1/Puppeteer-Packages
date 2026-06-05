@@ -58,6 +58,7 @@ describe("applyFingerprint", () => {
       timezoneId: "America/New_York",
     };
     await applyFingerprint(page, fp);
+    // "UA/1.0" has no Chrome/ token, so reconcile leaves it unchanged
     expect(page.setUserAgent).toHaveBeenCalledWith({ userAgent: "UA/1.0" });
     expect(page.setUserAgent).toHaveBeenCalledTimes(1);
     expect(page.setViewport).toHaveBeenCalledWith({ width: 1280, height: 800 });

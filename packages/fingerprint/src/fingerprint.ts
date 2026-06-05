@@ -74,7 +74,7 @@ async function reconcileUserAgent(page: Page, ua: string): Promise<string> {
   } catch {
     return ua;
   }
-  const version = raw.match(/[\d.]+$/)?.[0];
+  const version = raw.match(/Chrome\/([\d.]+)/)?.[1];
   if (!version) return ua;
   return ua.replace(/Chrome\/[\d.]+/, `Chrome/${version}`);
 }
@@ -108,16 +108,19 @@ export async function applyFingerprint(
   await page.setExtraHTTPHeaders({
     "Accept-Language": ACCEPT_LANGUAGE[fp.locale] ?? fp.locale,
   });
-  const primary = fp.locale.split("-")[0] ?? fp.locale;
-  const languages = [fp.locale, primary];
+  const parts = fp.locale.split("-");
+  const primary = parts.length > 1 ? parts[0] : undefined;
+  const languages = primary ? [fp.locale, primary] : [fp.locale];
   await page.evaluateOnNewDocument(
     (locale: string, langs: string[]) => {
+      // configurable: true is intentional — allows re-application without
+      // throwing, and mirrors Chromium's own navigator property descriptors.
       Object.defineProperty(navigator, "language", {
         get: () => locale,
         configurable: true,
       });
       Object.defineProperty(navigator, "languages", {
-        get: () => langs,
+        get: () => Object.freeze([...langs]),
         configurable: true,
       });
     },
