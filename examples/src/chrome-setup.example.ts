@@ -31,8 +31,7 @@ console.log("resolved path (or undefined):", existing);
 // => e.g. /opt/chrome-local/chrome/linux-144.0.7559.96/chrome-linux64/chrome
 
 // ── ensureChrome: resolve first, then download on cache miss ─────────────────
-// Demonstrate the full options shape; this async function is exported so it is
-// counted as "used" by lint — callers decide whether to run it.
+// Demonstrates the full options shape.
 const ensureOpts: EnsureChromeOptions = {
   searchDirs: ["/opt/chrome-local"],
   buildId: DEFAULT_CHROME_BUILD,

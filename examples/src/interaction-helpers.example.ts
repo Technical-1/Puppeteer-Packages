@@ -14,7 +14,6 @@ import {
 import type {
   InteractionOptions,
   TypeOptions,
-  ScrollOptions,
 } from "@technical-1/interaction-helpers";
 import type { Page } from "puppeteer-core";
 import { createConsoleLogger } from "@technical-1/logger";
@@ -38,8 +37,7 @@ export async function demo(page: Page): Promise<void> {
   console.log("page heading:", heading);
 
   // ── scroll to bottom to trigger lazy-loaded content ──────────────────────
-  const scrollOpts: ScrollOptions = {}; // no `by` → jump to bottom
-  await scroll(page, scrollOpts);
+  await scroll(page, {}); // no `by` → jump to bottom
   console.log("scrolled to bottom");
 
   // ── scroll by a fixed pixel amount ───────────────────────────────────────

@@ -14,6 +14,7 @@ import type { Page } from "puppeteer-core";
 export async function demo(page: Page): Promise<void> {
   // ── Generate a random fingerprint ─────────────────────────────────────────
   // Pass a seeded random function for deterministic results in tests.
+  // The function must return a float in [0, 1) — the same contract as Math.random().
   let seed = 0;
   const seededRand = () => {
     seed = (seed + 0.137) % 1;

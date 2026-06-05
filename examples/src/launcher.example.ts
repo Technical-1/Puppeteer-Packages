@@ -4,8 +4,7 @@
  * Demonstrates the scoped `withBrowser` lifecycle helper (guaranteed close) and
  * `BrowserPool` for concurrent-tab scenarios.
  *
- * These calls are typecheck-only (not executed in CI). Export the demo
- * functions so lint does not flag them as unused.
+ * These calls are typecheck-only (not executed in CI).
  */
 
 import { withBrowser, BrowserPool } from "@technical-1/launcher";
@@ -19,7 +18,7 @@ const logger = createConsoleLogger({ minLevel: "info" });
 // The launcher accepts an injected `puppeteer` instance (DI pattern) so the
 // example can be typecheck-only without launching real Chrome.
 
-export async function withBrowserDemo(puppeteer: PuppeteerLike): Promise<void> {
+export async function demo(puppeteer: PuppeteerLike): Promise<void> {
   const opts: LaunchOptions = {
     executablePath: "/path/to/chrome",
     headless: true,
@@ -45,9 +44,14 @@ export async function poolDemo(puppeteer: PuppeteerLike): Promise<void> {
   const pool = new BrowserPool(puppeteer, opts, { size: 2 });
 
   const browser = await pool.acquire();
-  console.log("acquired browser:", typeof browser);
-  // => object
-  pool.release(browser);
+  // release-in-finally guarantees the pool slot is returned on every path,
+  // including thrown errors inside the try block.
+  try {
+    console.log("acquired browser:", typeof browser);
+    // => object
+  } finally {
+    pool.release(browser); // release() is synchronous (returns void)
+  }
 
   await pool.drain();
   console.log("pool drained");

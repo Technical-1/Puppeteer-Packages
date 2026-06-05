@@ -43,9 +43,10 @@ console.log("next proxy:", rotator.next()); // wraps back to proxy1
 
 // ── applyProxyAuth — authenticate a page with proxy credentials ───────────
 export async function demo(page: Page): Promise<void> {
+  // In production read credentials from environment variables — never hardcode them.
   const credentials: ProxyCredentials = {
-    username: "scraper",
-    password: "s3cr3t",
+    username: process.env["PROXY_USER"] ?? "change-me",
+    password: process.env["PROXY_PASS"] ?? "change-me",
   };
   await applyProxyAuth(page, credentials);
   console.log("proxy auth applied");

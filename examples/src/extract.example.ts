@@ -40,7 +40,9 @@ export async function demo(page: Page): Promise<void> {
     price: "span.price",
   };
 
+  // extractSchema returns Record<string, string>; with noUncheckedIndexedAccess
+  // each lookup is string | undefined — guard with ?? to model the absent case.
   const fields = await extractSchema(page, schema);
-  console.log("title:", fields["title"]);
-  console.log("price:", fields["price"]);
+  console.log("title:", fields["title"] ?? "(not found)");
+  console.log("price:", fields["price"] ?? "(not found)");
 }

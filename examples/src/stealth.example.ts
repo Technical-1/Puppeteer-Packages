@@ -4,9 +4,12 @@
  * Demonstrates wrapping a puppeteer instance with puppeteer-extra and the
  * stealth plugin to reduce bot-detection fingerprints.
  *
- * `applyStealth` accepts a `VanillaPuppeteer` (from puppeteer-extra); since
- * `PuppeteerNode` structurally satisfies that interface the demo receives a
- * `PuppeteerNode` and passes it through. Typecheck-only — not executed in CI.
+ * `applyStealth` expects a `VanillaPuppeteer` (from puppeteer-extra). Passing a
+ * raw `PuppeteerNode` from puppeteer-core compiles here because this project
+ * sets `skipLibCheck: true`; puppeteer-core@24 dropped `createBrowserFetcher`,
+ * which `VanillaPuppeteer` still requires. In stricter projects use the full
+ * `puppeteer` package or cast via `unknown as VanillaPuppeteer`.
+ * Typecheck-only — not executed in CI.
  */
 
 import { applyStealth } from "@technical-1/stealth";
