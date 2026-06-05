@@ -1,26 +1,29 @@
-# release.yml — Changesets publish pipeline
+# release.yml — Changesets publish pipeline (npm OIDC trusted publishing)
 #
-# PREREQUISITES (must exist BEFORE first run):
-#   1. @technical-1 npm scope + NPM_TOKEN secret
-#      See docs/npm-publish-checklist.md for the full pre-flight checklist.
+# AUTH: OIDC trusted publishing — NO npm token.
+#   `pnpm changeset publish` runs under pnpm 10 (which performs the GitHub
+#   OIDC → npm token exchange) with `id-token: write`. There is intentionally
+#   NO NPM_TOKEN / NODE_AUTH_TOKEN and NO `registry-url` .npmrc auth line —
+#   OIDC only engages when no auth token is present.
+#
+# ONE-TIME PREREQUISITE (npmjs.com, needs the account's 2FA/passkey):
+#   Register a trusted publisher for the @technical-1 scope (npm 11 supports
+#   bulk scope-level config via `npm trust`, or configure per package):
+#     - Repository:  Technical-1/Puppeteer-Packages
+#     - Workflow:    release.yml
+#     - (no GitHub environment is used)
+#   Until that trusted publisher exists, the publish step will be rejected.
+#   The FIRST publish of a brand-new package cannot use OIDC (npm requires the
+#   package to exist first); 0.1.0 was bootstrapped manually with a one-time
+#   automation token, after which that token was revoked.
 #
 # WORKSPACE PROTOCOL — workspace:^ rewrite:
-#   All packages declare internal deps as `workspace:^`. When
-#   `pnpm changeset publish` (or `pnpm publish`) runs, pnpm rewrites every
-#   `workspace:^` specifier to the concrete `^<resolved-version>` before
-#   packing the tarball. This means npm consumers automatically satisfy a
-#   newer compatible internal dep without any manual pin updates. This is the
-#   conscious protocol decision from Plan 09 / P9T1 — surfaced here so
-#   release reviewers understand why cross-package deps appear as `^x.y.z`
-#   in the published package.json rather than `workspace:^`.
+#   Internal deps are `workspace:^`; pnpm rewrites them to concrete `^x.y.z`
+#   at pack time, so npm consumers auto-satisfy a newer compatible internal
+#   dep. (Plan 09 / P9T1 decision.)
 #
-# NPM AUTH NOTE:
-#   setup-node with `registry-url` writes ~/.npmrc containing:
-#     //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
-#   changesets/action additionally reads NPM_TOKEN from env for its own
-#   publish invocation. To satisfy both paths we pass the same secret as
-#   BOTH NODE_AUTH_TOKEN and NPM_TOKEN in the changesets step env — this is
-#   the canonical changesets-in-CI pattern widely used in the ecosystem.
+# PROVENANCE: with OIDC trusted publishing npm generates provenance
+#   automatically (id-token: write is the only requirement).
 
 name: Release
 
@@ -35,7 +38,7 @@ concurrency:
 permissions:
   contents: write
   pull-requests: write
-  id-token: write  # npm provenance
+  id-token: write # OIDC token exchange + provenance
 
 jobs:
   release:
@@ -47,15 +50,15 @@ jobs:
 
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
-          version: 9.12.0
+          version: 10.34.1
 
+      # Node 24 ships an OIDC-capable toolchain (OIDC needs Node >= 22.14).
+      # No registry-url: we deliberately avoid writing an .npmrc auth line so
+      # OIDC isn't shadowed by an (empty) token.
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
-          # registry-url writes ~/.npmrc referencing ${NODE_AUTH_TOKEN}
-          # so `pnpm changeset publish` picks up the token automatically.
-          registry-url: https://registry.npmjs.org
 
       - run: pnpm install --frozen-lockfile
 
@@ -71,9 +74,4 @@ jobs:
           title: "Release"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # NPM_TOKEN  — read by changesets/action's internal publish logic
-          # NODE_AUTH_TOKEN — read by the ~/.npmrc written by setup-node above;
-          #   both point at the same secret so either code path authenticates.
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: "true"
+          # No NPM_TOKEN / NODE_AUTH_TOKEN — publish authenticates via OIDC.
