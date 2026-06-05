@@ -77,6 +77,11 @@ export class BrowserPool {
 
   release(browser: Browser): void {
     if (!this.#busy.delete(browser)) return; // foreign / double release — ignore
+    // drain() atomically sets #drained and clears #busy in the same synchronous turn;
+    // a browser cannot be in #busy after drain() has run, so this guard is defensive
+    // dead-code in Node's single-threaded model — kept for safety if the implementation
+    // ever adds an async gap before #busy.clear().
+    /* v8 ignore next 4 -- unreachable in single-threaded Node: drain() clears #busy synchronously */
     if (this.#drained) {
       void browser.close().catch(() => {});
       return;

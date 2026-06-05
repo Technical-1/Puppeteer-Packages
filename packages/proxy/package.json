@@ -3,6 +3,11 @@
   "version": "0.0.0",
   "description": "Proxy launch args, authenticated proxies, and rotation",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Technical-1/Puppeteer-Packages.git",
+    "directory": "packages/proxy"
+  },
   "type": "module",
   "sideEffects": false,
   "files": ["dist"],

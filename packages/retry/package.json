@@ -3,6 +3,11 @@
   "version": "0.0.0",
   "description": "Generic backoff/retry wrappers keyed off the @technical-1/core retryable error contract",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Technical-1/Puppeteer-Packages.git",
+    "directory": "packages/retry"
+  },
   "type": "module",
   "sideEffects": false,
   "files": ["dist"],

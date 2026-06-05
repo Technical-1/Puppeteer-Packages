@@ -3,6 +3,11 @@
   "version": "0.0.0",
   "description": "Page → PDF helper with sane defaults for Puppeteer pages.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Technical-1/Puppeteer-Packages.git",
+    "directory": "packages/pdf"
+  },
   "type": "module",
   "sideEffects": false,
   "files": ["dist"],

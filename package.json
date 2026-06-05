@@ -4,14 +4,21 @@
   "version": "0.0.0",
   "description": "Reusable Puppeteer capability suite — @technical-1/* packages",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Technical-1/Puppeteer-Packages.git"
+  },
   "type": "module",
   "packageManager": "pnpm@9.12.0",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "coverage": "vitest run --coverage",
     "ci": "turbo run typecheck lint test build",
     "changeset": "changeset",
     "version-packages": "changeset version",
@@ -22,6 +29,7 @@
     "@types/node": "^22.9.0",
     "@typescript-eslint/eslint-plugin": "^8.13.0",
     "@typescript-eslint/parser": "^8.13.0",
+    "@vitest/coverage-v8": "^2.1.4",
     "eslint": "^9.14.0",
     "tsup": "^8.3.5",
     "turbo": "^2.2.3",

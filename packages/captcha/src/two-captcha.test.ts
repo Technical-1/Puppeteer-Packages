@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { createTwoCaptchaAdapterForTesting } from "./two-captcha.js";
+import { createTwoCaptchaAdapter, createTwoCaptchaAdapterForTesting } from "./two-captcha.js";
 
 interface FakeFetchCall {
   url: string;
@@ -107,6 +107,38 @@ describe("createTwoCaptchaAdapterForTesting", () => {
     });
     await vi.runAllTimersAsync();
     await a;
+  });
+
+  it("throws CaptchaError (retryable:false) when res.php returns a terminal error (not CAPCHA_NOT_READY / OK|)", async () => {
+    // Lines 71-75: the poll receives a response that is neither "CAPCHA_NOT_READY"
+    // nor an "OK|" prefix — triggers the terminal-error throw inside the poll loop.
+    const { fetch } = makeFakeFetch(["OK|42", "ERROR_CAPTCHA_UNSOLVABLE"]);
+    const solver = createTwoCaptchaAdapterForTesting("API_KEY", {
+      fetch,
+      pollMs: 1000,
+      timeoutMs: 30_000,
+    });
+
+    const p = solver.solveRecaptchaV2("SITE", "https://example.com/");
+    // Register the rejection assertion BEFORE running timers (mirrors the
+    // existing "throws on timeout" pattern) so the rejection is captured.
+    const a = expect(p).rejects.toMatchObject({
+      name: "CaptchaError",
+      retryable: false,
+    });
+    await vi.runAllTimersAsync();
+    await a;
+  });
+
+  it("createTwoCaptchaAdapter (public wrapper) returns a working solver", async () => {
+    // Lines 26-30: exercise the public createTwoCaptchaAdapter entry-point.
+    // We can't inject a fetch into it, but we can verify it returns a CaptchaSolver
+    // with the expected method shape without making any real network calls, by
+    // directly testing that the solver exposes all three solve methods.
+    const solver = createTwoCaptchaAdapter("API_KEY");
+    expect(typeof solver.solveRecaptchaV2).toBe("function");
+    expect(typeof solver.solveHCaptcha).toBe("function");
+    expect(typeof solver.solveTurnstile).toBe("function");
   });
 
   it("does NOT log or echo the apiKey on any code path (logs OR thrown CaptchaError payload)", async () => {

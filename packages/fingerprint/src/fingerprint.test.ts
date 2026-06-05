@@ -115,6 +115,44 @@ describe("applyFingerprint", () => {
     expect(page.setUserAgent).toHaveBeenCalledWith({ userAgent: "X Chrome/144.0.0.0 Y" });
   });
 
+  it("returns the UA unchanged when page.browser().version() throws", async () => {
+    const page = mockPage({
+      browser: () => ({
+        version: vi.fn().mockRejectedValue(new Error("browser crashed")),
+      }),
+    });
+    const fp: Fingerprint = {
+      userAgent: "X Chrome/144.0.0.0 Y",
+      viewport: { width: 1280, height: 800 },
+      locale: "en-US",
+      timezoneId: "America/New_York",
+    };
+    await applyFingerprint(page, fp);
+    // reconcileUserAgent catches the throw and returns the ua unmodified
+    expect(page.setUserAgent).toHaveBeenCalledWith({ userAgent: "X Chrome/144.0.0.0 Y" });
+  });
+
+  it("uses locale without primary sub-tag as the sole language when locale has no dash", async () => {
+    const page = mockPage();
+    const fp: Fingerprint = {
+      userAgent: "UA/1.0",
+      viewport: { width: 1920, height: 1080 },
+      locale: "fr",
+      timezoneId: "Europe/Paris",
+    };
+    await applyFingerprint(page, fp);
+    // locale "fr" has no "-", so primary is undefined → languages = ["fr"]
+    expect(page.evaluateOnNewDocument).toHaveBeenCalledWith(
+      expect.any(Function),
+      "fr",
+      ["fr"],
+    );
+    // ACCEPT_LANGUAGE has no entry for "fr", so falls back to locale itself
+    expect(page.setExtraHTTPHeaders).toHaveBeenCalledWith({
+      "Accept-Language": "fr",
+    });
+  });
+
   it("overrides in-page navigator.language and languages via evaluateOnNewDocument", async () => {
     const page = mockPage();
     const fp: Fingerprint = {

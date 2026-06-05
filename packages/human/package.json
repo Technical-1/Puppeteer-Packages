@@ -3,6 +3,11 @@
   "version": "0.0.0",
   "description": "Humanized delays, typing cadence, and mouse movement",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Technical-1/Puppeteer-Packages.git",
+    "directory": "packages/human"
+  },
   "type": "module",
   "sideEffects": false,
   "files": ["dist"],

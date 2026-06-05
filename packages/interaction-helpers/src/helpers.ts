@@ -71,6 +71,7 @@ export async function waitAndGet(
 ): Promise<string> {
   await waitVisible(page, selector, opts.timeout ?? DEFAULT_TIMEOUT);
   const text = await page.evaluate((sel: string) => {
+    /* v8 ignore next 2 -- runs in-browser inside Chromium; covered by the integration tier */
     const el = document.querySelector(sel);
     return el ? el.textContent : "";
   }, selector);
@@ -85,6 +86,7 @@ export interface ScrollOptions {
 /** Scroll the page. Default: jump to the bottom (triggers lazy content). */
 export async function scroll(page: Page, opts: ScrollOptions = {}): Promise<void> {
   await page.evaluate((by?: number) => {
+    /* v8 ignore next 2 -- runs in-browser inside Chromium; covered by the integration tier */
     if (typeof by === "number") window.scrollBy(0, by);
     else window.scrollTo(0, document.body.scrollHeight);
   }, opts.by);

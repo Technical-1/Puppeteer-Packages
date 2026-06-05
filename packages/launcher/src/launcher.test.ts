@@ -32,6 +32,13 @@ describe("launch", () => {
       expect.objectContaining({ headless: true }),
     );
   });
+
+  it("calls logger.log when a logger is provided", async () => {
+    const { puppeteer } = mockPuppeteer();
+    const log = vi.fn();
+    await launch(puppeteer as never, { executablePath: "/c", logger: { log } });
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("Launching Chrome"), "step");
+  });
 });
 
 describe("withBrowser", () => {
@@ -77,5 +84,27 @@ describe("withBrowser", () => {
     expect(out).toBe("ok");
     expect(browser.close).toHaveBeenCalledTimes(1);
     expect(log).toHaveBeenCalledWith(expect.stringContaining("close failed"), "warn");
+  });
+
+  it("logs 'Browser closed' on successful close when logger is provided", async () => {
+    // Covers closeQuietly line 37: opts.logger?.log("Browser closed", "info")
+    const { puppeteer } = mockPuppeteer();
+    const log = vi.fn();
+    await withBrowser(puppeteer as never, { executablePath: "/c", logger: { log } }, async () => "ok");
+    expect(log).toHaveBeenCalledWith("Browser closed", "info");
+  });
+
+  it("logs the stringified reason when close() rejects with a non-Error", async () => {
+    // Covers launcher.ts line 41: closeErr instanceof Error ternary — non-Error branch.
+    const browser = { close: vi.fn().mockRejectedValue("string-reason") };
+    const puppeteer = { launch: vi.fn().mockResolvedValue(browser) };
+    const log = vi.fn();
+    const out = await withBrowser(
+      puppeteer as never,
+      { executablePath: "/c", logger: { log } },
+      async () => "result",
+    );
+    expect(out).toBe("result");
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("string-reason"), "warn");
   });
 });

@@ -3,6 +3,11 @@
   "version": "0.0.0",
   "description": "Hardened safeClick/safeType/waitAndGet/scroll page helpers throwing typed @technical-1/core errors",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Technical-1/Puppeteer-Packages.git",
+    "directory": "packages/interaction-helpers"
+  },
   "type": "module",
   "sideEffects": false,
   "files": ["dist"],

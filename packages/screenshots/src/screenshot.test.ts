@@ -68,4 +68,45 @@ describe("screenshotElement", () => {
       selector: "#missing",
     });
   });
+
+  it("wraps page.$() failure in PptrKitError (retryable:true) with cause (lines 41-42)", async () => {
+    // page.$() itself throws — different error path from el === null
+    const cause = new Error("page.$ exploded");
+    const page = {
+      $: vi.fn().mockRejectedValue(cause),
+    } as unknown as Page;
+
+    await expect(screenshotElement(page, "#btn")).rejects.toMatchObject({
+      name: "PptrKitError",
+      retryable: true,
+      cause: expect.objectContaining({ message: "page.$ exploded" }),
+    });
+  });
+
+  it("wraps element.screenshot() failure in PptrKitError (retryable:true) with cause (lines 47-48)", async () => {
+    // element.screenshot() throws after el is found
+    const cause = new Error("element screenshot failed");
+    const el = {
+      screenshot: vi.fn().mockRejectedValue(cause),
+    } as unknown as ElementHandle;
+    const page = {
+      $: vi.fn().mockResolvedValue(el),
+    } as unknown as Page;
+
+    await expect(screenshotElement(page, "#hero")).rejects.toMatchObject({
+      name: "PptrKitError",
+      retryable: true,
+      cause: expect.objectContaining({ message: "element screenshot failed" }),
+    });
+  });
+
+  it("uses default empty opts when no options are supplied", async () => {
+    const el = elementMock();
+    const page = {
+      $: vi.fn().mockResolvedValue(el),
+    } as unknown as Page;
+
+    await screenshotElement(page, "#hero");
+    expect(el.screenshot).toHaveBeenCalledWith({});
+  });
 });

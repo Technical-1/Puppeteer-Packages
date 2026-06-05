@@ -117,6 +117,7 @@ export async function applyFingerprint(
   const languages = primary ? [fp.locale, primary] : [fp.locale];
   await page.evaluateOnNewDocument(
     (locale: string, langs: string[]) => {
+      /* v8 ignore next 11 -- in-page evaluateOnNewDocument callback; covered by tests/integration fingerprint test */
       // configurable: true is intentional — allows re-application without
       // throwing, and mirrors Chromium's own navigator property descriptors.
       Object.defineProperty(navigator, "language", {

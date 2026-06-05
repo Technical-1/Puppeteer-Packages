@@ -3,6 +3,11 @@
   "version": "0.0.0",
   "description": "Typed environment/options loader with schema and defaults for the @technical-1 suite",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Technical-1/Puppeteer-Packages.git",
+    "directory": "packages/config"
+  },
   "type": "module",
   "sideEffects": false,
   "files": ["dist"],
