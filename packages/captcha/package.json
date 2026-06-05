@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/captcha",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Captcha-solver adapter interface plus a reference 2captcha adapter. No bundled credentials — consumer supplies the API key.",
   "license": "MIT",
   "repository": {
@@ -10,11 +10,19 @@
   },
   "type": "module",
   "sideEffects": false,
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
-      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "main": "./dist/index.cjs",
@@ -26,8 +34,16 @@
     "lint": "eslint src",
     "test": "vitest run"
   },
-  "dependencies": { "@technical-1/core": "workspace:^" },
-  "peerDependencies": { "puppeteer-core": ">=22 <25" },
-  "devDependencies": { "puppeteer-core": "^24.4.0" },
-  "publishConfig": { "access": "public" }
+  "dependencies": {
+    "@technical-1/core": "workspace:^"
+  },
+  "peerDependencies": {
+    "puppeteer-core": ">=22 <25"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.4.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }
