@@ -33,6 +33,16 @@ describe("throttle", () => {
       cause: expect.objectContaining({ message: "CDP closed" }),
     });
   });
+
+  it("reuses one CDP session across repeated throttle()/setOffline() calls (no leak)", async () => {
+    const { page, target } = pageMock();
+    await throttle(page, THROTTLE_PROFILES.SLOW_3G);
+    await throttle(page, THROTTLE_PROFILES.FAST_3G);
+    await setOffline(page, true);
+    await setOffline(page, false);
+    // one attach for the whole page lifetime, not four
+    expect(target.createCDPSession).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("setOffline", () => {
