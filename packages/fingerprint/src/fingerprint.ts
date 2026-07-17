@@ -123,9 +123,18 @@ export async function applyFingerprint(
   await page.setUserAgent({ userAgent });
   await page.setViewport(fp.viewport);
   await page.emulateTimezone(fp.timezoneId);
-  const acceptLanguage = ACCEPT_LANGUAGE[fp.locale] ?? fp.locale;
+  const profileAcceptLanguage = ACCEPT_LANGUAGE[fp.locale];
+  const acceptLanguage = profileAcceptLanguage ?? fp.locale;
   await page.setExtraHTTPHeaders({ "Accept-Language": acceptLanguage });
-  const languages = languagesFromAcceptLanguage(acceptLanguage);
+  // For a pinned locale with a profile entry, navigator.languages is derived
+  // from the header's token list so the two can never disagree. For a locale
+  // outside the profiles (no Accept-Language entry), the header is just the
+  // raw locale string (no commas) — so fall back to unioning in the primary
+  // subtag directly, same as the old behavior, instead of collapsing to a
+  // single-element list for hyphenated locales like "es-MX".
+  const languages = profileAcceptLanguage
+    ? languagesFromAcceptLanguage(profileAcceptLanguage)
+    : [fp.locale, ...(fp.locale.includes("-") ? [fp.locale.split("-")[0]!] : [])];
   await page.evaluateOnNewDocument(
     (locale: string, langs: string[]) => {
       /* v8 ignore next 11 -- in-page evaluateOnNewDocument callback; covered by tests/integration fingerprint test */
