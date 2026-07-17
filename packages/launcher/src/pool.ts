@@ -1,3 +1,4 @@
+import { PptrKitError } from "@technical-1/core";
 import type { Browser } from "puppeteer-core";
 import { launch, type LaunchOptions, type PuppeteerLike } from "./launcher.js";
 
@@ -40,9 +41,16 @@ export class BrowserPool {
   #drained = false;
 
   constructor(puppeteer: PuppeteerLike, opts: LaunchOptions, poolOpts: PoolOptions = {}) {
+    const size = poolOpts.size ?? 1;
+    if (!Number.isInteger(size) || size < 1) {
+      throw new PptrKitError(`BrowserPool size must be a positive integer, got ${size}`, {
+        retryable: false,
+        context: { size },
+      });
+    }
     this.#puppeteer = puppeteer;
     this.#opts = opts;
-    this.#size = poolOpts.size ?? 1;
+    this.#size = size;
   }
 
   async acquire(): Promise<Browser> {
