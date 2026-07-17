@@ -110,3 +110,21 @@ describe("screenshotElement", () => {
     expect(el.screenshot).toHaveBeenCalledWith({});
   });
 });
+
+describe("encoding option is excluded from the typed surface", () => {
+  it("rejects encoding:'base64' at the type level (return stays Uint8Array)", async () => {
+    const page = pageMock();
+    // @ts-expect-error encoding is Omit-ed: a base64 string return is not part of the contract
+    const buf = await screenshot(page, { encoding: "base64", fullPage: true });
+    // runtime still returns the mock bytes; the guarantee is purely at the type level
+    expect(buf).toEqual(Buffer.from("png-bytes"));
+  });
+
+  it("rejects encoding:'base64' on screenshotElement too", async () => {
+    const el = elementMock();
+    const page = { $: vi.fn().mockResolvedValue(el) } as unknown as Page;
+    // @ts-expect-error encoding is Omit-ed on the element path as well
+    const buf = await screenshotElement(page, "#hero", { encoding: "base64" });
+    expect(buf).toEqual(Buffer.from("el-bytes"));
+  });
+});

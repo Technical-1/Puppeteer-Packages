@@ -2,9 +2,10 @@ import { PptrKitError, SelectorNotFoundError } from "@technical-1/core";
 import type { Page, ScreenshotOptions } from "puppeteer-core";
 
 /**
- * Take a page screenshot. Returns the `Buffer` (or whatever puppeteer-core
- * returns for the chosen `encoding`) and/or writes to `opts.path` per
- * puppeteer's normal behavior.
+ * Take a page screenshot. Returns the raw image bytes (`Uint8Array`) and/or
+ * writes to `opts.path` per puppeteer's normal behavior. The `encoding` option
+ * is intentionally excluded — this helper always returns binary bytes; call
+ * puppeteer-core directly if you need a base64 string.
  *
  * Throws `PptrKitError` (`retryable:true`) wrapping any puppeteer failure as
  * `cause`. Transient page errors usually succeed on a retry; persistent
@@ -13,7 +14,7 @@ import type { Page, ScreenshotOptions } from "puppeteer-core";
  */
 export async function screenshot(
   page: Page,
-  opts: ScreenshotOptions = {},
+  opts: Omit<ScreenshotOptions, "encoding"> = {},
 ): Promise<Uint8Array> {
   try {
     return await page.screenshot(opts);
@@ -32,7 +33,7 @@ export async function screenshot(
 export async function screenshotElement(
   page: Page,
   selector: string,
-  opts: ScreenshotOptions = {},
+  opts: Omit<ScreenshotOptions, "encoding"> = {},
 ): Promise<Uint8Array> {
   let el;
   try {
