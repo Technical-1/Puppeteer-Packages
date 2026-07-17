@@ -73,13 +73,25 @@ export async function awaitDownloadForTesting(
 
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const now = await _readdir(dir);
-    for (const name of now) {
-      if (before.has(name)) continue;
-      if (name.endsWith(".crdownload")) continue; // still downloading
-      const path = join(dir, name);
-      const s = await _stat(path);
-      return { path, filename: name, size: s.size };
+    try {
+      const now = await _readdir(dir);
+      for (const name of now) {
+        if (before.has(name)) continue;
+        if (name.endsWith(".crdownload")) continue; // still downloading
+        const path = join(dir, name);
+        const s = await _stat(path);
+        return { path, filename: name, size: s.size };
+      }
+    } catch (cause) {
+      // A mid-poll fs failure — dir removed, or a file vanished between the
+      // readdir listing and the stat (a real .crdownload→final rename race).
+      // Transient => retryable:true, and it MUST stay inside the PptrKitError
+      // contract rather than leaking a raw Node error to the caller.
+      throw new PptrKitError("awaitDownload: directory read failed during polling", {
+        retryable: true,
+        cause,
+        context: { dir },
+      });
     }
     await sleep(pollMs);
   }

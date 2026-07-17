@@ -88,6 +88,50 @@ describe("awaitDownload", () => {
     expect(file.filename).toBe("new.zip"); // NOT "leftover.zip"
   });
 
+  it("rejects with PptrKitError(retryable:true) when stat throws mid-poll (rename race)", async () => {
+    const cause = new Error("ENOENT: file vanished between readdir and stat");
+    let calls = 0;
+    const trigger = vi.fn(async () => {});
+
+    const p = awaitDownload("/dl", trigger, {
+      pollMs: 50,
+      timeoutMs: 1000,
+      // snapshot sees an empty dir; first poll sees the new file, then stat races/ENOENTs
+      readdir: async () => (calls++ === 0 ? [] : ["report.pdf"]),
+      stat: async () => { throw cause; },
+    });
+
+    const a = expect(p).rejects.toMatchObject({
+      name: "PptrKitError",
+      retryable: true,
+      cause: expect.objectContaining({ message: cause.message }),
+    });
+    await vi.runAllTimersAsync();
+    await a;
+  });
+
+  it("rejects with PptrKitError(retryable:true) when readdir throws mid-poll", async () => {
+    const cause = new Error("ENOENT: download dir removed mid-poll");
+    let calls = 0;
+    const trigger = vi.fn(async () => {});
+
+    const p = awaitDownload("/dl", trigger, {
+      pollMs: 50,
+      timeoutMs: 1000,
+      // snapshot succeeds ([]), the polling readdir throws
+      readdir: async () => { if (calls++ === 0) return []; throw cause; },
+      stat: async () => ({ size: 0 } as never),
+    });
+
+    const a = expect(p).rejects.toMatchObject({
+      name: "PptrKitError",
+      retryable: true,
+      cause: expect.objectContaining({ message: cause.message }),
+    });
+    await vi.runAllTimersAsync();
+    await a;
+  });
+
   it("rejects with PptrKitError(retryable:false) when readdir throws during initial snapshot", async () => {
     const cause = new Error("ENOENT: no such file or directory");
     const trigger = vi.fn();
