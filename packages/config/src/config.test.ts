@@ -67,4 +67,14 @@ describe("loadConfig", () => {
     const cfg = loadConfig({ opt: { env: "X_OPT" } }, {});
     expect(cfg.opt).toBeUndefined();
   });
+
+  it("types a parsed optional field with no default as V | undefined", () => {
+    const cfg = loadConfig({ port: { env: "PORT", parse: Number } }, {});
+    // runtime: absent, no default → undefined
+    expect(cfg.port).toBeUndefined();
+    // type: must be number | undefined, so a bare number assignment must be rejected
+    // @ts-expect-error port is number | undefined here, not number
+    const n: number = cfg.port;
+    void n;
+  });
 });
