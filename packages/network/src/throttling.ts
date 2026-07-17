@@ -67,6 +67,11 @@ export async function throttle(page: Page, profile: ThrottleProfile): Promise<vo
     const cdp = await getSession(page);
     await cdp.send("Network.emulateNetworkConditions", profile);
   } catch (cause) {
+    // Evict the cached session so a retry re-creates a fresh one instead of
+    // reusing a session that may have detached — otherwise a stale cached
+    // session makes every subsequent call on this page fail forever, which
+    // undermines the retryable:true contract below.
+    SESSIONS.delete(page);
     throw new PptrKitError("throttle failed", { retryable: true, cause });
   }
 }
