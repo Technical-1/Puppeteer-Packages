@@ -153,7 +153,7 @@ describe("applyFingerprint", () => {
     });
   });
 
-  it("overrides in-page navigator.language and languages via evaluateOnNewDocument", async () => {
+  it("overrides in-page navigator.language and languages coherently with the Accept-Language header", async () => {
     const page = mockPage();
     const fp: Fingerprint = {
       userAgent: "X Chrome/144.0.0.0 Y",
@@ -162,10 +162,14 @@ describe("applyFingerprint", () => {
       timezoneId: "Europe/Berlin",
     };
     await applyFingerprint(page, fp);
+    // header is "de-DE,de;q=0.9,en;q=0.8" → languages must advertise the same en fallback
+    expect(page.setExtraHTTPHeaders).toHaveBeenCalledWith({
+      "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+    });
     expect(page.evaluateOnNewDocument).toHaveBeenCalledWith(
       expect.any(Function),
       "de-DE",
-      ["de-DE", "de"],
+      ["de-DE", "de", "en"],
     );
   });
 });
