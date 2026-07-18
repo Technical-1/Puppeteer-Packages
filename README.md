@@ -21,7 +21,7 @@ I built this to turn a pile of copy-pasted Puppeteer helpers into a real library
 | Core | `core` |
 | Utility | `retry`, `logger`, `config` |
 | Browser foundation | `chrome-setup`, `launcher` |
-| Navigation & data | `navigation`, `interaction-helpers`, `extract` |
+| Navigation & data | `navigation`, `interaction-helpers`, `extract`, `dialogs` |
 | Anti-detection | `stealth`, `fingerprint`, `human`, `proxy` |
 | State & traffic | `session`, `network` |
 | Output | `screenshots`, `pdf`, `downloads` |
