@@ -168,4 +168,52 @@ describe("waitForNetworkIdle", () => {
       expect.objectContaining({ idleTime: 200, timeout: 30000 }),
     );
   });
+
+  it("logs a step line on entry via the injected logger", async () => {
+    const log = vi.fn();
+    const page = mockPage();
+    await waitForNetworkIdle(page, { logger: { log }, idleTime: 400 });
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("waiting for network idle"),
+      "step",
+    );
+  });
+
+  it("wraps a network-idle timeout in a core TimeoutError (retryable:true) and logs at error", async () => {
+    const log = vi.fn();
+    const cause = new Error("Waiting failed: 30000ms exceeded"); // puppeteer-shaped reject
+    const page = mockPage({
+      waitForNetworkIdle: vi.fn().mockRejectedValue(cause),
+    });
+
+    const err = await waitForNetworkIdle(page, { timeout: 30000, logger: { log } })
+      .catch((e: unknown) => e);
+
+    expect(err).toMatchObject({ name: "TimeoutError", retryable: true });
+    expect((err as { cause?: unknown }).cause).toBe(cause);
+    expect((err as { context?: Record<string, unknown> }).context).toMatchObject({
+      idleTime: 500,
+      timeout: 30000,
+    });
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("network idle wait failed"),
+      "error",
+    );
+  });
+
+  it("stringifies a non-Error rejection when logging the failure", async () => {
+    const log = vi.fn();
+    const page = mockPage({
+      waitForNetworkIdle: vi.fn().mockRejectedValue("boom"),
+    });
+
+    const err = await waitForNetworkIdle(page, { logger: { log } })
+      .catch((e: unknown) => e);
+
+    expect(err).toMatchObject({ name: "TimeoutError", retryable: true });
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("network idle wait failed: boom"),
+      "error",
+    );
+  });
 });

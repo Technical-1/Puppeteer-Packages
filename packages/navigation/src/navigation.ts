@@ -1,6 +1,6 @@
 import type { Page, HTTPResponse } from "puppeteer-core";
 import { withRetry, type RetryOptions } from "@technical-1/retry";
-import { NavigationError } from "@technical-1/core";
+import { NavigationError, TimeoutError } from "@technical-1/core";
 import type { LoggerOption } from "@technical-1/core";
 
 export type WaitUntil =
@@ -81,20 +81,39 @@ export async function goto(
   return response;
 }
 
-export interface NetworkIdleOptions {
+export interface NetworkIdleOptions extends LoggerOption {
   /** Quiet window before considering the network idle (ms). Default 500. */
   idleTime?: number;
   /** Overall timeout (ms). Default 30000. */
   timeout?: number;
 }
 
-/** Wait for the SPA's network to go idle (delegates to puppeteer-core). */
+/**
+ * Wait for the SPA's network to go idle (delegates to puppeteer-core). A
+ * timeout is rewrapped as a core `TimeoutError` (retryable:true) so the failure
+ * surface matches `goto` and the rest of the suite; the raw puppeteer error is
+ * preserved as `cause`.
+ */
 export async function waitForNetworkIdle(
   page: Page,
   opts: NetworkIdleOptions = {},
 ): Promise<void> {
-  await page.waitForNetworkIdle({
-    idleTime: opts.idleTime ?? 500,
-    timeout: opts.timeout ?? 30000,
-  });
+  const idleTime = opts.idleTime ?? 500;
+  const timeout = opts.timeout ?? 30000;
+  opts.logger?.log(
+    `waiting for network idle (idleTime ${idleTime}ms, timeout ${timeout}ms)`,
+    "step",
+  );
+  try {
+    await page.waitForNetworkIdle({ idleTime, timeout });
+  } catch (err) {
+    opts.logger?.log(
+      `network idle wait failed: ${err instanceof Error ? err.message : String(err)}`,
+      "error",
+    );
+    throw new TimeoutError(
+      `waitForNetworkIdle: network did not idle within ${timeout}ms`,
+      { cause: err, context: { idleTime, timeout } },
+    );
+  }
 }
