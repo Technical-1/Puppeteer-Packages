@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { goto, waitForNetworkIdle } from "./navigation.js";
+import { goto, waitForNetworkIdle, navigateOnGesture } from "./navigation.js";
 import type { Page, HTTPResponse } from "puppeteer-core";
 
 function fakeResponse(status = 200): HTTPResponse {
@@ -131,6 +131,126 @@ describe("goto", () => {
 
     expect(ac.signal.aborted).toBe(true); // confirms the race condition held
     expect(err).toMatchObject({ name: "NavigationError", retryable: true, url: "https://x.test" });
+    expect((err as { cause?: unknown }).cause).toBeInstanceOf(Error);
+    expect((err as { cause?: Error }).cause?.message).toBe("net::ERR_FAILED");
+  });
+});
+
+describe("navigateOnGesture", () => {
+  function gesturePage(overrides: Record<string, unknown> = {}): Page {
+    return {
+      url: () => "https://from.test",
+      waitForNavigation: vi.fn().mockResolvedValue(fakeResponse(200)),
+      ...overrides,
+    } as unknown as Page;
+  }
+
+  it("races waitForNavigation against the gesture and returns the response", async () => {
+    const wfn = vi.fn().mockResolvedValue(fakeResponse(200));
+    const gesture = vi.fn().mockResolvedValue(undefined);
+    const page = gesturePage({ waitForNavigation: wfn });
+
+    const res = await navigateOnGesture(page, gesture, {
+      waitUntil: "domcontentloaded",
+      timeout: 9000,
+    });
+
+    expect(wfn).toHaveBeenCalledWith(
+      expect.objectContaining({ waitUntil: "domcontentloaded", timeout: 9000 }),
+    );
+    expect(gesture).toHaveBeenCalledTimes(1);
+    expect(res).toBe((await wfn.mock.results[0]!.value) as HTTPResponse);
+  });
+
+  it("applies default waitUntil 'load' and timeout 30000 when omitted", async () => {
+    const wfn = vi.fn().mockResolvedValue(null);
+    const page = gesturePage({ waitForNavigation: wfn });
+    await navigateOnGesture(page, () => {});
+    expect(wfn).toHaveBeenCalledWith(
+      expect.objectContaining({ waitUntil: "load", timeout: 30000 }),
+    );
+  });
+
+  it("returns null for a same-document / no-response navigation", async () => {
+    const page = gesturePage({ waitForNavigation: vi.fn().mockResolvedValue(null) });
+    const res = await navigateOnGesture(page, () => {});
+    expect(res).toBeNull();
+  });
+
+  it("retries a failing gesture navigation then succeeds (no real wait)", async () => {
+    const wfn = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("net::ERR_TIMED_OUT"))
+      .mockResolvedValue(fakeResponse(200));
+    const page = gesturePage({ waitForNavigation: wfn });
+    await navigateOnGesture(page, () => {}, {
+      retry: { retries: 2, minDelayMs: 0, jitter: false },
+    });
+    expect(wfn).toHaveBeenCalledTimes(2);
+  });
+
+  it("wraps a terminal failure in NavigationError (originating url + cause)", async () => {
+    const cause = new Error("net::ERR_ABORTED");
+    const page = gesturePage({ waitForNavigation: vi.fn().mockRejectedValue(cause) });
+    const err = await navigateOnGesture(page, () => {}, {
+      retry: { retries: 1, minDelayMs: 0, jitter: false },
+    }).catch((e: unknown) => e);
+    expect(err).toMatchObject({ name: "NavigationError", url: "https://from.test", retryable: true });
+    expect((err as { cause?: unknown }).cause).toBe(cause);
+  });
+
+  it("rethrows an aborted gesture navigation as-is (terminal), not a retryable NavigationError", async () => {
+    const ac = new AbortController();
+    ac.abort();
+    const wfn = vi.fn().mockRejectedValue(new Error("net::ERR_FAILED"));
+    const page = gesturePage({ waitForNavigation: wfn });
+    const err = await navigateOnGesture(page, () => {}, {
+      retry: { signal: ac.signal, retries: 3, minDelayMs: 0, jitter: false },
+    }).catch((e: unknown) => e);
+    expect((err as Error).name).toBe("Error");
+    expect(err).not.toMatchObject({ name: "NavigationError" });
+    expect(wfn).not.toHaveBeenCalled();
+  });
+
+  it("logs 'awaiting gesture navigation' at step and settled at success", async () => {
+    const log = vi.fn();
+    const page = gesturePage();
+    await navigateOnGesture(page, () => {}, { logger: { log } });
+    expect(log).toHaveBeenCalledWith(
+      "awaiting gesture navigation from https://from.test",
+      "step",
+    );
+    expect(log).toHaveBeenCalledWith(
+      "gesture navigation settled from https://from.test",
+      "success",
+    );
+  });
+
+  it("lets the caller override isRetryable via opts.retry (terminal immediately)", async () => {
+    const wfn = vi.fn().mockRejectedValue(new Error("net::ERR_FAILED"));
+    const page = gesturePage({ waitForNavigation: wfn });
+    await expect(
+      navigateOnGesture(page, () => {}, {
+        retry: { retries: 5, minDelayMs: 0, jitter: false, isRetryable: () => false },
+      }),
+    ).rejects.toMatchObject({ name: "NavigationError" });
+    expect(wfn).toHaveBeenCalledTimes(1); // caller override won — not retried
+  });
+
+  it("still wraps a genuine retry-exhausted failure as NavigationError even when signal.aborted is true (race: abort unrelated to the failure)", async () => {
+    const ac = new AbortController();
+    const wfn = vi.fn().mockImplementation(() => {
+      ac.abort();
+      return Promise.reject(new Error("net::ERR_FAILED"));
+    });
+    const page = gesturePage({ waitForNavigation: wfn });
+
+    const err = await navigateOnGesture(page, () => {}, {
+      retry: { signal: ac.signal, retries: 0, minDelayMs: 0, jitter: false },
+    }).catch((e: unknown) => e);
+
+    expect(ac.signal.aborted).toBe(true);
+    expect(err).toMatchObject({ name: "NavigationError", retryable: true, url: "https://from.test" });
     expect((err as { cause?: unknown }).cause).toBeInstanceOf(Error);
     expect((err as { cause?: Error }).cause?.message).toBe("net::ERR_FAILED");
   });
