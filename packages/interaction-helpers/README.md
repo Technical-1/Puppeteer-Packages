@@ -14,4 +14,67 @@ await safeClick(page, "button#go");
 const heading = await waitAndGet(page, "h1");
 ```
 
-`safeClick` / `safeType` / `waitAndGet` / `scroll`.
+## Surface
+
+- `safeClick` / `safeType` / `waitAndGet` — wait for a visible selector, then act; throw `SelectorNotFoundError` on a miss. Accept a `Page` **or** a `Frame`.
+- `resolveFrame(page, { name | url | selector })` — locate an iframe's `Frame` for frame-scoped interaction.
+- `uploadFile(target, selector, files)` — set files on a plain `<input type=file>` (Page or Frame).
+- `uploadViaFileChooser(page, triggerSelector, files)` — drive a styled upload button through the native file chooser.
+- `scroll(page, { by? })` — single scroll (to bottom, or by N px). `autoScroll(page, { maxScrolls?, step?, settleMs?, itemSelector? })` — loop until lazy content stops growing.
+- `pressKey(page, key)` / `pressShortcut(page, modifiers, key)` — press Enter/Escape/Tab or a Ctrl/Cmd/Shift/Alt + key combo.
+
+All helpers take an optional injected `logger` and emit a `"step"` log line; all thrown failures are `@technical-1/core` typed errors.
+
+### Iframe-scoped interaction
+
+`safeClick` / `safeType` / `waitAndGet` / `scroll` / `uploadFile` accept a `Page`
+or a `Frame`, so resolve the frame once and interact within it:
+
+```ts
+import { resolveFrame, safeClick } from "@technical-1/interaction-helpers";
+
+const frame = await resolveFrame(page, { name: "checkout" });
+// or: { url: /stripe\.com/ } or { selector: "iframe#payment" }
+await safeClick(frame, "button#pay");
+```
+
+### File uploads
+
+```ts
+import {
+  uploadFile,
+  uploadViaFileChooser,
+} from "@technical-1/interaction-helpers";
+
+// Plain hidden <input type=file> (Page or Frame):
+await uploadFile(page, "input[type=file]", "./avatar.png");
+
+// Styled button backed by the native file chooser:
+await uploadViaFileChooser(page, "button#upload", [
+  "./a.pdf",
+  "./b.pdf",
+]);
+```
+
+### Infinite scroll
+
+```ts
+import { autoScroll } from "@technical-1/interaction-helpers";
+
+// Loop until the item count stops growing (or maxScrolls is hit):
+const iterations = await autoScroll(page, {
+  itemSelector: ".feed-item",
+  maxScrolls: 20,
+  settleMs: 800,
+});
+```
+
+### Keyboard
+
+```ts
+import { pressKey, pressShortcut } from "@technical-1/interaction-helpers";
+
+await pressKey(page, "Enter");
+await pressShortcut(page, "Control", "KeyA"); // Ctrl+A
+await pressShortcut(page, ["Meta", "Shift"], "KeyZ"); // Cmd+Shift+Z
+```
