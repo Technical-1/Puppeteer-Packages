@@ -31,8 +31,9 @@ If stable resolution fails (offline), it falls back to `DEFAULT_CHROME_BUILD`.
 ## Requirements
 
 This package's emitted TypeScript definitions reference Node's built-in types
-(`NodeJS.Platform`, `process.platform`). Your consumer project must have
-`@types/node` installed as a devDependency:
+(`NodeJS.Platform`, `process.platform`). **If you consume this package from
+TypeScript**, install `@types/node` as a devDependency. Plain-JavaScript
+consumers can skip this entirely:
 
 ```bash
 npm install --save-dev @types/node

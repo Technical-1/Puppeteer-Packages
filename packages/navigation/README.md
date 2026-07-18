@@ -6,6 +6,11 @@ helper. Failures surface as a `@technical-1/core` `NavigationError`
 (navigation) or `TimeoutError` (network-idle) carrying the URL/cause. You
 inject the `Page`.
 
+> **ESM only.** This package ships ESM (`"type": "module"`). If you're in a
+> fresh `npm init -y` project (CommonJS by default), add `"type": "module"` to
+> your `package.json` — or use a `.mjs` file — before running the examples
+> below, or Node throws `SyntaxError: Cannot use import statement outside a module`.
+
 ```ts
 import { goto, navigateOnGesture, waitForNetworkIdle } from "@technical-1/navigation";
 
@@ -57,8 +62,9 @@ await waitForNetworkIdle(page, { idleTime: 500, timeout: 5000, logger });
 
 This package's emitted TypeScript definitions reference `AbortSignal` (via
 `GotoOptions.retry: RetryOptions` from `@technical-1/retry`), which is not
-part of the `ES2022` lib. Your consumer project must have `@types/node`
-installed as a devDependency (or include `"DOM"` in your tsconfig `lib`):
+part of the `ES2022` lib. **If you consume this package from TypeScript**,
+install `@types/node` as a devDependency (or include `"DOM"` in your tsconfig
+`lib`). Plain-JavaScript consumers can skip this entirely:
 
 ```bash
 npm install --save-dev @types/node
