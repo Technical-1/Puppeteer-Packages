@@ -301,4 +301,77 @@ describe("handleDialogs — response failure", () => {
     );
     expect(handler.handled).toEqual([]);
   });
+
+  it("routes a throwing onDialog consumer callback to onError, no unhandled rejection", async () => {
+    const { page, fire } = pageMock();
+    const onError = vi.fn();
+    const log = vi.fn();
+    const handler = handleDialogs(page, {
+      defaultAction: "accept",
+      onDialog: () => {
+        throw new Error("consumer boom");
+      },
+      onError,
+      logger: { log },
+    });
+    const dialog = dialogMock({ type: "confirm", message: "Sure?" });
+
+    // A throwing consumer callback must be caught inside respond() and routed
+    // to onError — never escape the fire-and-forget listener as an unhandled
+    // rejection (which would fail this test).
+    fire(dialog);
+    await flush();
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    const err = onError.mock.calls[0]![0] as {
+      name: string;
+      retryable: boolean;
+      message: string;
+      cause?: unknown;
+      context: Record<string, unknown>;
+    };
+    expect(err.name).toBe("PptrKitError");
+    expect(err.retryable).toBe(true);
+    expect((err.cause as Error).message).toBe("consumer boom");
+    expect(err.context).toEqual({ type: "confirm", action: "accept" });
+    expect(log).toHaveBeenCalledWith(err.message, "error");
+    // The dialog itself was answered and recorded before the consumer threw.
+    expect(handler.handled).toEqual([
+      { type: "confirm", message: "Sure?", defaultValue: "", action: "accept" },
+    ]);
+  });
+});
+
+describe("handleDialogs — disposal & beforeunload", () => {
+  it("detaches the listener on dispose and is idempotent", () => {
+    const { page, off } = pageMock();
+    const handler = handleDialogs(page);
+
+    handler.dispose();
+    handler.dispose();
+
+    expect(off).toHaveBeenCalledTimes(1);
+    expect(off).toHaveBeenCalledWith("dialog", expect.any(Function));
+  });
+
+  it("accepts a beforeunload dialog per policy", async () => {
+    const { page, fire } = pageMock();
+    const handler = handleDialogs(page, {
+      policy: { beforeunload: { action: "accept" } },
+    });
+    const dialog = dialogMock({ type: "beforeunload", message: "Leave?" });
+
+    fire(dialog);
+    await flush();
+
+    expect(dialog.accept).toHaveBeenCalledWith(undefined);
+    expect(handler.handled).toEqual([
+      {
+        type: "beforeunload",
+        message: "Leave?",
+        defaultValue: "",
+        action: "accept",
+      },
+    ]);
+  });
 });

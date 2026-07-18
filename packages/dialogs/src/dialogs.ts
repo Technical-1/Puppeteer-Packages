@@ -65,16 +65,32 @@ export function handleDialogs(
       return;
     }
 
-    const event: DialogEvent = {
-      type,
-      message: dialog.message(),
-      defaultValue: dialog.defaultValue(),
-      action,
-      ...(promptText !== undefined ? { promptText } : {}),
-    };
-    handled.push(event);
-    opts.logger?.log(`dialogs: ${action}ed ${type} "${event.message}"`, "step");
-    opts.onDialog?.(event);
+    // The dialog was answered; record it and notify the success-path consumers.
+    // A throwing consumer callback (onDialog / logger) must not escape this
+    // fire-and-forget listener as an unhandled rejection — route it to onError
+    // like any other transient failure.
+    try {
+      const event: DialogEvent = {
+        type,
+        message: dialog.message(),
+        defaultValue: dialog.defaultValue(),
+        action,
+        ...(promptText !== undefined ? { promptText } : {}),
+      };
+      handled.push(event);
+      opts.logger?.log(
+        `dialogs: ${action}ed ${type} "${event.message}"`,
+        "step",
+      );
+      opts.onDialog?.(event);
+    } catch (cause) {
+      const error = new PptrKitError(
+        `dialogs: consumer callback threw for ${type} dialog`,
+        { retryable: true, cause, context: { type, action } },
+      );
+      opts.logger?.log(error.message, "error");
+      opts.onError?.(error);
+    }
   };
 
   const listener = (dialog: Dialog): void => {
