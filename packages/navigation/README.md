@@ -62,8 +62,9 @@ await waitForNetworkIdle(page, { idleTime: 500, timeout: 5000, logger });
 
 This package's emitted TypeScript definitions reference `AbortSignal` (via
 `GotoOptions.retry: RetryOptions` from `@technical-1/retry`), which is not
-part of the `ES2022` lib. Your consumer project must have `@types/node`
-installed as a devDependency (or include `"DOM"` in your tsconfig `lib`):
+part of the `ES2022` lib. **If you consume this package from TypeScript**,
+install `@types/node` as a devDependency (or include `"DOM"` in your tsconfig
+`lib`). Plain-JavaScript consumers can skip this entirely:
 
 ```bash
 npm install --save-dev @types/node
