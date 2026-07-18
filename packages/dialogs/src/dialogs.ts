@@ -14,6 +14,8 @@ export interface HandleDialogsOptions extends LoggerOption {
   defaultAction?: DialogDisposition;
   /** Text entered when accepting a `prompt` and the rule supplies none. */
   promptText?: string;
+  /** Invoked after each dialog is successfully handled. */
+  onDialog?: (event: DialogEvent) => void;
 }
 
 export interface DialogHandler {
@@ -49,6 +51,17 @@ export function handleDialogs(
     } else {
       await dialog.dismiss();
     }
+
+    const event: DialogEvent = {
+      type,
+      message: dialog.message(),
+      defaultValue: dialog.defaultValue(),
+      action,
+      ...(promptText !== undefined ? { promptText } : {}),
+    };
+    handled.push(event);
+    opts.logger?.log(`dialogs: ${action}ed ${type} "${event.message}"`, "step");
+    opts.onDialog?.(event);
   };
 
   const listener = (dialog: Dialog): void => {

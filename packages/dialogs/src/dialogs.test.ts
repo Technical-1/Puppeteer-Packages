@@ -136,3 +136,62 @@ describe("handleDialogs — prompt text", () => {
     expect(dialog.accept).toHaveBeenCalledWith(undefined);
   });
 });
+
+describe("handleDialogs — typed events", () => {
+  it("appends a DialogEvent to handled and calls onDialog", async () => {
+    const { page, fire } = pageMock();
+    const onDialog = vi.fn();
+    const handler = handleDialogs(page, {
+      defaultAction: "accept",
+      policy: { prompt: { action: "accept", promptText: "x" } },
+      onDialog,
+    });
+    const dialog = dialogMock({
+      type: "prompt",
+      message: "Name?",
+      defaultValue: "Jo",
+    });
+
+    fire(dialog);
+    await flush();
+
+    const event = {
+      type: "prompt",
+      message: "Name?",
+      defaultValue: "Jo",
+      action: "accept",
+      promptText: "x",
+    };
+    expect(handler.handled).toEqual([event]);
+    expect(onDialog).toHaveBeenCalledWith(event);
+  });
+
+  it("omits promptText from the event for non-prompt dialogs", async () => {
+    const { page, fire } = pageMock();
+    const handler = handleDialogs(page, { defaultAction: "dismiss" });
+    const dialog = dialogMock({ type: "alert", message: "Hi" });
+
+    fire(dialog);
+    await flush();
+
+    expect(handler.handled).toEqual([
+      { type: "alert", message: "Hi", defaultValue: "", action: "dismiss" },
+    ]);
+    expect(handler.handled[0]).not.toHaveProperty("promptText");
+  });
+
+  it("logs a step line through the injected logger", async () => {
+    const { page, fire } = pageMock();
+    const log = vi.fn();
+    handleDialogs(page, { defaultAction: "dismiss", logger: { log } });
+    const dialog = dialogMock({ type: "confirm", message: "Sure?" });
+
+    fire(dialog);
+    await flush();
+
+    expect(log).toHaveBeenCalledWith(
+      'dialogs: dismissed confirm "Sure?"',
+      "step",
+    );
+  });
+});
