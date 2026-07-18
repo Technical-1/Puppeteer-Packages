@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { loadConfig } from "./config.js";
-import { PptrKitError } from "@technical-1/core";
+import { ConfigError } from "@technical-1/core";
 
 describe("loadConfig", () => {
   it("uses defaults when env vars are unset", () => {
@@ -24,21 +24,23 @@ describe("loadConfig", () => {
     expect(cfg.key).toBe("abc");
   });
 
-  it("throws a PptrKitError naming the env var when a required key is missing", () => {
+  it("throws a ConfigError naming the env var when a required key is missing", () => {
     try {
       loadConfig({ key: { env: "X_KEY", required: true } }, {});
-      throw new Error("should have thrown");
+      expect.unreachable("should have thrown");
     } catch (err) {
-      expect(err).toBeInstanceOf(PptrKitError);
-      expect((err as PptrKitError).message).toContain("X_KEY");
-      expect((err as PptrKitError).context).toEqual({ env: "X_KEY" });
+      expect(err).toBeInstanceOf(ConfigError);
+      expect((err as ConfigError).name).toBe("ConfigError");
+      expect((err as ConfigError).retryable).toBe(false);
+      expect((err as ConfigError).message).toContain("X_KEY");
+      expect((err as ConfigError).context).toEqual({ env: "X_KEY" });
     }
   });
 
   it("treats an empty-string env var as missing for a required field", () => {
     expect(() =>
       loadConfig({ key: { env: "X_KEY", required: true } }, { X_KEY: "" }),
-    ).toThrow(PptrKitError);
+    ).toThrow(ConfigError);
   });
 
   it("uses the default (no throw) when a field is both required and has a default", () => {
