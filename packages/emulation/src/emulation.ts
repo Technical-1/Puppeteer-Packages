@@ -24,18 +24,6 @@ export type EmulationTarget = KnownDeviceName | Device | Viewport;
  */
 export interface EmulateDeviceOptions extends LoggerOption {}
 
-/**
- * Emulate a device, custom device, or viewport on `page`.
- *
- * - Pass a `KnownDevices` preset name (e.g. `"iPhone 15 Pro"`) or a full `Device`
- *   (`{ userAgent, viewport }`) to apply UA + viewport together via `page.emulate`.
- * - Pass a bare `Viewport` (`{ width, height, deviceScaleFactor?, isMobile?, hasTouch?,
- *   isLandscape? }`) to set just the viewport via `page.setViewport`.
- *
- * Throws `PptrKitError` `retryable:false` for an unknown preset name (deterministic caller
- * error). Wraps a `page.emulate` / `page.setViewport` rejection as `PptrKitError`
- * `retryable:true` carrying the original as `cause`.
- */
 /** Narrows to a full `Device` (`{ userAgent, viewport }`) as opposed to a bare `Viewport`. */
 function isDevice(target: Device | Viewport): target is Device {
   return "userAgent" in target;
@@ -54,6 +42,18 @@ async function applyDevice(page: Page, device: Device, label: string): Promise<v
   }
 }
 
+/**
+ * Emulate a device, custom device, or viewport on `page`.
+ *
+ * - Pass a `KnownDevices` preset name (e.g. `"iPhone 15 Pro"`) or a full `Device`
+ *   (`{ userAgent, viewport }`) to apply UA + viewport together via `page.emulate`.
+ * - Pass a bare `Viewport` (`{ width, height, deviceScaleFactor?, isMobile?, hasTouch?,
+ *   isLandscape? }`) to set just the viewport via `page.setViewport`.
+ *
+ * Throws `PptrKitError` `retryable:false` for an unknown preset name (deterministic caller
+ * error). Wraps a `page.emulate` / `page.setViewport` rejection as `PptrKitError`
+ * `retryable:true` carrying the original as `cause`.
+ */
 export async function emulateDevice(
   page: Page,
   target: EmulationTarget,
@@ -61,26 +61,38 @@ export async function emulateDevice(
 ): Promise<void> {
   const { logger } = options;
 
-  // Preset-name (string) branch is added in Task 4.
+  if (typeof target === "string") {
+    // noUncheckedIndexedAccess makes this Device | undefined only if we widen the key;
+    // widen explicitly so an out-of-catalog name (from a caller cast) is caught at runtime.
+    const device = (KnownDevices as Record<string, Device | undefined>)[target];
+    if (device === undefined) {
+      throw new PptrKitError(`Unknown device preset: ${target}`, {
+        retryable: false,
+        context: { device: target },
+      });
+    }
+    logger?.log(`emulating device preset ${target}`, "step");
+    await applyDevice(page, device, target);
+    logger?.log(`emulated device preset ${target}`, "success");
+    return;
+  }
 
-  if (isDevice(target as Device | Viewport)) {
-    const device = target as Device;
+  if (isDevice(target)) {
     logger?.log("emulating custom device", "step");
-    await applyDevice(page, device, "custom device");
+    await applyDevice(page, target, "custom device");
     logger?.log("emulated custom device", "success");
     return;
   }
 
-  const viewport = target as Viewport;
-  logger?.log(`setting viewport ${viewport.width}x${viewport.height}`, "step");
+  logger?.log(`setting viewport ${target.width}x${target.height}`, "step");
   try {
-    await page.setViewport(viewport);
+    await page.setViewport(target);
   } catch (cause) {
     throw new PptrKitError("emulateDevice: setViewport failed", {
       retryable: true,
       cause,
-      context: { viewport },
+      context: { viewport: target },
     });
   }
-  logger?.log(`viewport set ${viewport.width}x${viewport.height}`, "success");
+  logger?.log(`viewport set ${target.width}x${target.height}`, "success");
 }

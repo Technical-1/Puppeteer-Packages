@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { emulateDevice } from "./emulation.js";
 import { PptrKitError } from "@technical-1/core";
+import { KnownDevices } from "puppeteer-core";
 import type { Page } from "puppeteer-core";
 
 function mockPage(overrides: Record<string, unknown> = {}): Page {
@@ -89,6 +90,48 @@ describe("emulateDevice — custom Device", () => {
     const boom = new Error("session detached");
     const page = mockPage({ emulate: vi.fn().mockRejectedValue(boom) });
     await expect(emulateDevice(page, device)).rejects.toMatchObject({
+      name: "PptrKitError",
+      retryable: true,
+      cause: boom,
+    });
+  });
+});
+
+describe("emulateDevice — KnownDevices preset", () => {
+  it("applies a named preset via page.emulate with the catalog's Device object", async () => {
+    const page = mockPage();
+    await emulateDevice(page, "iPhone 15 Pro");
+    expect(page.emulate).toHaveBeenCalledWith(KnownDevices["iPhone 15 Pro"]);
+    expect(page.emulate).toHaveBeenCalledTimes(1);
+    expect(page.setViewport).not.toHaveBeenCalled();
+  });
+
+  it("emits DI logger step/success lines naming the preset", async () => {
+    const page = mockPage();
+    const logger = { log: vi.fn() };
+    await emulateDevice(page, "iPhone 15 Pro", { logger });
+    expect(logger.log).toHaveBeenCalledWith("emulating device preset iPhone 15 Pro", "step");
+    expect(logger.log).toHaveBeenCalledWith("emulated device preset iPhone 15 Pro", "success");
+  });
+
+  it("throws a NON-retryable PptrKitError for an unknown preset name", async () => {
+    const page = mockPage();
+    await expect(
+      // deliberately unknown name — cast through unknown to bypass the KnownDeviceName type
+      emulateDevice(page, "Nokia 3310" as unknown as Parameters<typeof emulateDevice>[1]),
+    ).rejects.toMatchObject({
+      name: "PptrKitError",
+      retryable: false,
+      context: { device: "Nokia 3310" },
+    });
+    expect(page.emulate).not.toHaveBeenCalled();
+    expect(page.setViewport).not.toHaveBeenCalled();
+  });
+
+  it("wraps a page.emulate failure on a preset as retryable PptrKitError", async () => {
+    const boom = new Error("target closed");
+    const page = mockPage({ emulate: vi.fn().mockRejectedValue(boom) });
+    await expect(emulateDevice(page, "iPhone 15 Pro")).rejects.toMatchObject({
       name: "PptrKitError",
       retryable: true,
       cause: boom,
