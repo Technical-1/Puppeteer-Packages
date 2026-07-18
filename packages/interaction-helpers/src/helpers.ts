@@ -81,13 +81,20 @@ export async function waitAndGet(
   return (text ?? "").trim();
 }
 
-export interface ScrollOptions {
+export interface ScrollOptions extends LoggerOption {
   /** If given, scroll by this many pixels; otherwise jump to the bottom. */
   by?: number;
 }
 
-/** Scroll the page. Default: jump to the bottom (triggers lazy content). */
-export async function scroll(page: PageOrFrame, opts: ScrollOptions = {}): Promise<void> {
+/** Scroll the page or frame. Default: jump to the bottom (triggers lazy content). */
+export async function scroll(
+  page: PageOrFrame,
+  opts: ScrollOptions = {},
+): Promise<void> {
+  opts.logger?.log(
+    opts.by !== undefined ? `scroll by ${opts.by}` : "scroll to bottom",
+    "step",
+  );
   await page.evaluate((by?: number) => {
     /* v8 ignore next 2 -- runs in-browser inside Chromium; covered by the integration tier */
     if (typeof by === "number") window.scrollBy(0, by);

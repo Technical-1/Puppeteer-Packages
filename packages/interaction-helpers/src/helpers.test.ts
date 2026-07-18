@@ -170,6 +170,18 @@ describe("scroll", () => {
     await scroll(page, { by: 500 });
     expect(page.evaluate).toHaveBeenCalledWith(expect.any(Function), 500);
   });
+
+  it("logs 'scroll to bottom' at step level by default (Issue: ScrollOptions minor)", async () => {
+    const logger = { log: vi.fn() };
+    await scroll(mockPage(), { logger });
+    expect(logger.log).toHaveBeenCalledWith("scroll to bottom", "step");
+  });
+
+  it("logs the pixel amount when scrolling by a delta", async () => {
+    const logger = { log: vi.fn() };
+    await scroll(mockPage(), { by: 400, logger });
+    expect(logger.log).toHaveBeenCalledWith("scroll by 400", "step");
+  });
 });
 
 describe("Page | Frame support", () => {
