@@ -244,6 +244,31 @@ describe("autoScroll", () => {
     const frame = mockFrame({ evaluate });
     expect(await autoScroll(frame, { settleMs: 0 })).toBe(2);
   });
+
+  it("defaults to a 500ms settle wait when settleMs is omitted", async () => {
+    vi.useFakeTimers();
+    const evaluate = vi
+      .fn()
+      .mockResolvedValueOnce(10)
+      .mockResolvedValueOnce(20)
+      .mockResolvedValueOnce(20);
+    const page = mockPage({ evaluate });
+    // No settleMs in opts at all — exercises the `?? 500` fallback branch.
+    const p = autoScroll(page, {});
+
+    // First iteration's evaluate resolves, then it should be waiting on the
+    // settle sleep; before 500ms elapse the second scroll hasn't happened yet.
+    await vi.advanceTimersByTimeAsync(499);
+    expect(evaluate).toHaveBeenCalledTimes(1);
+
+    // Crossing the 500ms mark releases the sleep and the loop proceeds.
+    await vi.advanceTimersByTimeAsync(1);
+    expect(evaluate).toHaveBeenCalledTimes(2);
+
+    await vi.advanceTimersByTimeAsync(500);
+    expect(await p).toBe(3);
+    vi.useRealTimers();
+  });
 });
 
 describe("Page | Frame support", () => {
