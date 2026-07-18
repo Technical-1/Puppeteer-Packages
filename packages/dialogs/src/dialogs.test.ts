@@ -236,4 +236,69 @@ describe("handleDialogs — response failure", () => {
     expect(onDialog).not.toHaveBeenCalled();
     expect(handler.handled).toEqual([]);
   });
+
+  it("routes a dismiss() rejection to onError as a retryable PptrKitError, no handled entry", async () => {
+    const { page, fire } = pageMock();
+    const onError = vi.fn();
+    const onDialog = vi.fn();
+    const log = vi.fn();
+    const handler = handleDialogs(page, {
+      defaultAction: "dismiss",
+      onError,
+      onDialog,
+      logger: { log },
+    });
+    const dialog = {
+      type: vi.fn().mockReturnValue("alert"),
+      message: vi.fn().mockReturnValue("uh oh"),
+      defaultValue: vi.fn().mockReturnValue(""),
+      accept: vi.fn().mockResolvedValue(undefined),
+      dismiss: vi.fn().mockRejectedValue(new Error("target closed")),
+    } as unknown as Dialog;
+
+    fire(dialog);
+    await flush();
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    const err = onError.mock.calls[0]![0] as {
+      name: string;
+      retryable: boolean;
+      message: string;
+      context: Record<string, unknown>;
+    };
+    expect(err.name).toBe("PptrKitError");
+    expect(err.retryable).toBe(true);
+    expect(err.message).toBe("dialogs: failed to dismiss alert dialog");
+    expect(err.context).toEqual({ type: "alert", action: "dismiss" });
+    expect(log).toHaveBeenCalledWith(err.message, "error");
+    expect(onDialog).not.toHaveBeenCalled();
+    expect(handler.handled).toEqual([]);
+  });
+
+  it("logs the error and does not throw/reject when opts.onError is not supplied", async () => {
+    const { page, fire } = pageMock();
+    const log = vi.fn();
+    const handler = handleDialogs(page, {
+      defaultAction: "accept",
+      logger: { log },
+    });
+    const dialog = {
+      type: vi.fn().mockReturnValue("confirm"),
+      message: vi.fn().mockReturnValue("boom"),
+      defaultValue: vi.fn().mockReturnValue(""),
+      accept: vi.fn().mockRejectedValue(new Error("page closed")),
+      dismiss: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Dialog;
+
+    // No try/catch here: if the missing-onError branch ever throws or leaves
+    // an unhandled rejection, flush()/the test itself will fail.
+    fire(dialog);
+    await flush();
+
+    expect(log).toHaveBeenCalledWith(
+      "dialogs: failed to accept confirm dialog",
+      "error",
+    );
+    expect(handler.handled).toEqual([]);
+  });
 });
