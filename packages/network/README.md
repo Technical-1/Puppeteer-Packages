@@ -19,10 +19,16 @@ import {
 await blockResources(page, ["image", /google-analytics/]);
 
 // Capture all responses:
-const collector = await captureResponses(page);
+const collector = captureResponses(page);
 // … run navigation …
 console.log(collector.responses.length);
 collector.stop();
+
+// Capture XHR/fetch bodies too (opt-in, lazy):
+const withBodies = captureResponses(page, { body: ["xhr", "fetch"] });
+// … run navigation …
+const [first] = withBodies.responses;
+const payload = await first.json();
 
 // Throttle to Fast 3G:
 await throttle(page, THROTTLE_PROFILES.FAST_3G);
