@@ -136,6 +136,30 @@ describe("goto", () => {
     expect((err as { cause?: unknown }).cause).toBeInstanceOf(Error);
     expect((err as { cause?: Error }).cause?.message).toBe("net::ERR_FAILED");
   });
+
+  it("passes through a cross-realm AbortError (name match, NOT instanceof the local AbortError class) as terminal", async () => {
+    // Simulates the dual ESM/CJS boundary: a consumer can resolve retry's
+    // copy of @technical-1/core and navigation's copy as two different
+    // modules, so the error withRetry throws is NOT `instanceof` navigation's
+    // imported `AbortError` class even though it genuinely represents an
+    // abort. Only a name check (`err.name === "AbortError"`) is reliable
+    // across that boundary — this proves the guard doesn't secretly still
+    // depend on `instanceof`.
+    const crossRealmAbort = Object.assign(new Error("Aborted"), {
+      name: "AbortError",
+    });
+    expect(crossRealmAbort).not.toBeInstanceOf(AbortError);
+
+    const gotoMock = vi.fn().mockRejectedValue(crossRealmAbort);
+    const page = mockPage({ goto: gotoMock });
+
+    const err = await goto(page, "https://x.test", {
+      retry: { retries: 0, minDelayMs: 0, jitter: false },
+    }).catch((e: unknown) => e);
+
+    expect(err).toBe(crossRealmAbort); // passed through as-is, not wrapped
+    expect(err).not.toMatchObject({ name: "NavigationError" });
+  });
 });
 
 describe("navigateOnGesture", () => {

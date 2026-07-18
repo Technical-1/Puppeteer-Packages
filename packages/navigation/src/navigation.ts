@@ -1,6 +1,6 @@
 import type { Page, HTTPResponse } from "puppeteer-core";
 import { withRetry, type RetryOptions } from "@technical-1/retry";
-import { NavigationError, TimeoutError, AbortError } from "@technical-1/core";
+import { NavigationError, TimeoutError } from "@technical-1/core";
 import type { LoggerOption, Logger, ErrorContext } from "@technical-1/core";
 
 export type WaitUntil =
@@ -41,13 +41,16 @@ export interface GotoOptions extends LoggerOption {
  * re-attempts a navigation the caller cancelled, and wrap any other surviving
  * failure as a retryable `NavigationError`.
  *
- * Abort detection keys off the error's OWN identity — `err instanceof
- * AbortError`, the discriminable core error `withRetry` throws when the
- * signal is aborted (Task 6) — not the current signal state. That identity
- * check is why a genuine retry-exhausted failure that merely races with an
+ * Abort detection keys off the cross-realm-safe `err.name === "AbortError"`
+ * check — not `instanceof`, which is unreliable across the dual ESM/CJS
+ * package boundary (a consumer can resolve retry's and navigation's copies
+ * of `@technical-1/core` as two different modules, giving two different
+ * `AbortError` classes) — and not the current signal state. That name check
+ * is why a genuine retry-exhausted failure that merely races with an
  * unrelated signal abort still wraps as `NavigationError`: withRetry's
- * retry-exhaustion path rethrows the real `fn()` failure as-is (not an
- * `AbortError`), so it fails the guard and gets wrapped, exactly as intended.
+ * retry-exhaustion path rethrows the real `fn()` failure as-is (name
+ * `"Error"`, not `"AbortError"`), so it fails the guard and gets wrapped,
+ * exactly as intended.
  */
 async function runNavigation(
   fn: (attempt: number) => Promise<HTTPResponse | null>,
@@ -65,7 +68,7 @@ async function runNavigation(
       ...opts.retry,
     });
   } catch (err) {
-    if (err instanceof AbortError) throw err;
+    if (err instanceof Error && err.name === "AbortError") throw err;
     throw new NavigationError(opts.errorUrl, {
       cause: err,
       context: opts.context,
