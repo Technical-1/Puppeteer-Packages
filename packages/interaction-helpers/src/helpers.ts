@@ -1,4 +1,4 @@
-import type { Page } from "puppeteer-core";
+import type { Page, Frame } from "puppeteer-core";
 import { SelectorNotFoundError } from "@technical-1/core";
 import type { LoggerOption, TimeoutOption } from "@technical-1/core";
 
@@ -14,12 +14,15 @@ declare var window: {
   scrollTo(x: number, y: number): void;
 };
 
-const DEFAULT_TIMEOUT = 15000;
+/** A puppeteer-core `Page` or `Frame` — the helpers work against either. */
+export type PageOrFrame = Page | Frame;
+
+export const DEFAULT_TIMEOUT = 15000;
 
 export interface InteractionOptions extends LoggerOption, TimeoutOption {}
 
 async function waitVisible(
-  page: Page,
+  page: PageOrFrame,
   selector: string,
   timeout: number,
 ): Promise<void> {
@@ -32,7 +35,7 @@ async function waitVisible(
 
 /** Wait for a visible selector, then click it. */
 export async function safeClick(
-  page: Page,
+  page: PageOrFrame,
   selector: string,
   opts: InteractionOptions = {},
 ): Promise<void> {
@@ -48,7 +51,7 @@ export interface TypeOptions extends InteractionOptions {
 
 /** Wait for a visible selector, then type text into it. */
 export async function safeType(
-  page: Page,
+  page: PageOrFrame,
   selector: string,
   text: string,
   opts: TypeOptions = {},
@@ -65,7 +68,7 @@ export async function safeType(
  * for presence checks).
  */
 export async function waitAndGet(
-  page: Page,
+  page: PageOrFrame,
   selector: string,
   opts: InteractionOptions = {},
 ): Promise<string> {
@@ -84,7 +87,7 @@ export interface ScrollOptions {
 }
 
 /** Scroll the page. Default: jump to the bottom (triggers lazy content). */
-export async function scroll(page: Page, opts: ScrollOptions = {}): Promise<void> {
+export async function scroll(page: PageOrFrame, opts: ScrollOptions = {}): Promise<void> {
   await page.evaluate((by?: number) => {
     /* v8 ignore next 2 -- runs in-browser inside Chromium; covered by the integration tier */
     if (typeof by === "number") window.scrollBy(0, by);

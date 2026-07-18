@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { safeClick, safeType, waitAndGet, scroll } from "./helpers.js";
 import { SelectorNotFoundError } from "@technical-1/core";
-import type { Page } from "puppeteer-core";
+import type { Page, Frame } from "puppeteer-core";
 
 function mockPage(overrides: Record<string, unknown> = {}): Page {
   return {
@@ -11,6 +11,16 @@ function mockPage(overrides: Record<string, unknown> = {}): Page {
     evaluate: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as Page;
+}
+
+function mockFrame(overrides: Record<string, unknown> = {}): Frame {
+  return {
+    waitForSelector: vi.fn().mockResolvedValue(true),
+    click: vi.fn().mockResolvedValue(undefined),
+    type: vi.fn().mockResolvedValue(undefined),
+    evaluate: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  } as unknown as Frame;
 }
 
 describe("safeClick", () => {
@@ -159,5 +169,43 @@ describe("scroll", () => {
     const page = mockPage();
     await scroll(page, { by: 500 });
     expect(page.evaluate).toHaveBeenCalledWith(expect.any(Function), 500);
+  });
+});
+
+describe("Page | Frame support", () => {
+  it("safeClick operates on a Frame", async () => {
+    const frame = mockFrame();
+    await safeClick(frame, "#btn");
+    expect(frame.waitForSelector).toHaveBeenCalledWith(
+      "#btn",
+      expect.objectContaining({ visible: true }),
+    );
+    expect(frame.click).toHaveBeenCalledWith("#btn");
+  });
+
+  it("safeType operates on a Frame", async () => {
+    const frame = mockFrame();
+    await safeType(frame, "#in", "abc");
+    expect(frame.type).toHaveBeenCalledWith("#in", "abc", { delay: 0 });
+  });
+
+  it("waitAndGet operates on a Frame", async () => {
+    const frame = mockFrame({ evaluate: vi.fn().mockResolvedValue("  hi  ") });
+    expect(await waitAndGet(frame, "#x")).toBe("hi");
+  });
+
+  it("scroll operates on a Frame", async () => {
+    const frame = mockFrame();
+    await scroll(frame);
+    expect(frame.evaluate).toHaveBeenCalledWith(expect.any(Function), undefined);
+  });
+
+  it("safeClick still throws SelectorNotFoundError against a Frame", async () => {
+    const frame = mockFrame({
+      waitForSelector: vi.fn().mockRejectedValue(new Error("timeout")),
+    });
+    await expect(safeClick(frame, "#missing")).rejects.toBeInstanceOf(
+      SelectorNotFoundError,
+    );
   });
 });
