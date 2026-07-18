@@ -22,7 +22,7 @@ I built this to turn a pile of copy-pasted Puppeteer helpers into a real library
 | Utility | `retry`, `logger`, `config` |
 | Browser foundation | `chrome-setup`, `launcher` |
 | Navigation & data | `navigation`, `interaction-helpers`, `extract`, `dialogs` |
-| Anti-detection | `stealth`, `fingerprint`, `human`, `proxy` |
+| Anti-detection | `stealth`, `fingerprint`, `human`, `proxy`, `emulation` |
 | State & traffic | `session`, `network` |
 | Output | `screenshots`, `pdf`, `downloads` |
 | Captcha | `captcha` |
