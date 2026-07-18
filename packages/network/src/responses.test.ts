@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import type { HTTPRequest, HTTPResponse, Page, ResourceType } from "puppeteer-core";
+import { NetworkError } from "@technical-1/core";
 import { captureResponses } from "./responses.js";
 
 function fakeResponse(opts: {
@@ -93,15 +94,16 @@ describe("captureResponses", () => {
     expect(page.off).toHaveBeenCalledTimes(1);
   });
 
-  it("body accessors throw a terminal PptrKitError when body capture is disabled", async () => {
+  it("body accessors throw a terminal NetworkError when body capture is disabled", async () => {
     const page = pageMock();
     const collector = captureResponses(page); // body omitted => disabled
 
     page._emit("response", fakeResponse({ resourceType: "xhr" }));
     const rec = collector.responses[0]!;
 
+    await expect(rec.buffer()).rejects.toBeInstanceOf(NetworkError);
     await expect(rec.buffer()).rejects.toMatchObject({
-      name: "PptrKitError", retryable: false,
+      name: "NetworkError", retryable: false,
     });
     await expect(rec.text()).rejects.toMatchObject({ retryable: false });
     await expect(rec.json()).rejects.toMatchObject({ retryable: false });
@@ -134,7 +136,7 @@ describe("captureResponses", () => {
     await expect(collector.responses[1]!.buffer()).rejects.toMatchObject({ retryable: false });
   });
 
-  it("wraps a body read protocol failure as a retryable PptrKitError", async () => {
+  it("wraps a body read protocol failure as a retryable NetworkError", async () => {
     const page = pageMock();
     const collector = captureResponses(page, { body: true });
 
@@ -143,13 +145,14 @@ describe("captureResponses", () => {
       buffer: async () => { throw new Error("No resource with given identifier"); },
     }));
 
+    await expect(collector.responses[0]!.buffer()).rejects.toBeInstanceOf(NetworkError);
     await expect(collector.responses[0]!.buffer()).rejects.toMatchObject({
-      name: "PptrKitError", retryable: true,
+      name: "NetworkError", retryable: true,
       cause: expect.objectContaining({ message: "No resource with given identifier" }),
     });
   });
 
-  it("json() throws a terminal PptrKitError on malformed JSON", async () => {
+  it("json() throws a terminal NetworkError on malformed JSON", async () => {
     const page = pageMock();
     const collector = captureResponses(page, { body: true });
 
@@ -157,8 +160,9 @@ describe("captureResponses", () => {
       resourceType: "xhr", buffer: async () => Buffer.from("not json"),
     }));
 
+    await expect(collector.responses[0]!.json()).rejects.toBeInstanceOf(NetworkError);
     await expect(collector.responses[0]!.json()).rejects.toMatchObject({
-      name: "PptrKitError", retryable: false,
+      name: "NetworkError", retryable: false,
     });
   });
 });

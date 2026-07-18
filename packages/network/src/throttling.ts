@@ -1,4 +1,4 @@
-import { PptrKitError } from "@technical-1/core";
+import { NetworkError } from "@technical-1/core";
 import type { CDPSession, Page } from "puppeteer-core";
 import type { ThrottleProfile } from "./types.js";
 
@@ -58,7 +58,7 @@ async function getSession(page: Page): Promise<CDPSession> {
 
 /**
  * Emulate `profile`'s network conditions on `page` via CDP. Throws
- * `PptrKitError` (`retryable:true` — the failure mode is usually a closed
+ * `NetworkError` (`retryable:true` — the failure mode is usually a closed
  * session that succeeds after a fresh page) wrapping the underlying error
  * as `cause`.
  */
@@ -72,7 +72,7 @@ export async function throttle(page: Page, profile: ThrottleProfile): Promise<vo
     // session makes every subsequent call on this page fail forever, which
     // undermines the retryable:true contract below.
     SESSIONS.delete(page);
-    throw new PptrKitError("throttle failed", { retryable: true, cause });
+    throw new NetworkError("throttle failed", { retryable: true, cause });
   }
 }
 

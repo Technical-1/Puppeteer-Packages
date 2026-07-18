@@ -1,4 +1,4 @@
-import { PptrKitError } from "@technical-1/core";
+import { NetworkError } from "@technical-1/core";
 import type { HTTPResponse, Page, ResourceType } from "puppeteer-core";
 import type { ResponseCollector, ResponseRecord } from "./types.js";
 
@@ -9,7 +9,7 @@ export interface CaptureResponsesOptions {
    * Enable lazy body access on captured records. `true` enables it for every
    * captured response; an array gates it to those resource types
    * (e.g. `["xhr","fetch"]` to grab only API payloads). Omit/`false` to disable —
-   * calling `buffer()`/`text()`/`json()` then throws a terminal `PptrKitError`.
+   * calling `buffer()`/`text()`/`json()` then throws a terminal `NetworkError`.
    */
   body?: boolean | readonly ResourceType[];
 }
@@ -25,7 +25,7 @@ function bodyEnabledFor(
 
 /**
  * Build the lazy, cached body accessors for one response. When `enabled` is
- * false every accessor throws a terminal `PptrKitError` (body capture was not
+ * false every accessor throws a terminal `NetworkError` (body capture was not
  * requested for this resource type). Otherwise the raw body is pulled from the
  * live `HTTPResponse` on first `await` and cached.
  */
@@ -38,7 +38,7 @@ function makeBodyAccessors(
 
   async function buffer(): Promise<Uint8Array> {
     if (!enabled) {
-      throw new PptrKitError(
+      throw new NetworkError(
         `Response body capture not enabled for resourceType "${resourceType}" ` +
           `(pass { body: true } or include it in the body gate)`,
         { retryable: false, context: { resourceType } },
@@ -49,7 +49,7 @@ function makeBodyAccessors(
       cached = await res.buffer();
       return cached;
     } catch (cause) {
-      throw new PptrKitError("Response body read failed", {
+      throw new NetworkError("Response body read failed", {
         retryable: true,
         context: { url: res.url(), resourceType },
         cause,
@@ -66,7 +66,7 @@ function makeBodyAccessors(
     try {
       return JSON.parse(raw) as unknown;
     } catch (cause) {
-      throw new PptrKitError("Response body is not valid JSON", {
+      throw new NetworkError("Response body is not valid JSON", {
         retryable: false,
         context: { url: res.url(), resourceType },
         cause,

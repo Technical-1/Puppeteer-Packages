@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import type { HTTPRequest, Page, ResourceType } from "puppeteer-core";
+import { NetworkError } from "@technical-1/core";
 import { blockResources, unblockResources } from "./blocking.js";
 
 interface FakeRequestArgs {
@@ -86,10 +87,11 @@ describe("blockResources", () => {
     expect(analytics.abort).toHaveBeenCalledOnce();
   });
 
-  it("throws PptrKitError (retryable:false) for an empty pattern list", async () => {
+  it("throws NetworkError (retryable:false) for an empty pattern list", async () => {
     const page = pageMock();
+    await expect(blockResources(page, [])).rejects.toBeInstanceOf(NetworkError);
     await expect(blockResources(page, [])).rejects.toMatchObject({
-      name: "PptrKitError",
+      name: "NetworkError",
       retryable: false,
     });
   });
