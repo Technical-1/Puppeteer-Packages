@@ -7,7 +7,13 @@ you pass your `puppeteer` instance in (this package imports only its types).
 
 ```ts
 import puppeteer from "puppeteer-core";
+import { ensureChrome } from "@technical-1/chrome-setup";
 import { withBrowser } from "@technical-1/launcher";
+
+// Need a Chrome binary? `npm install @technical-1/chrome-setup` resolves an
+// installed Chrome-for-Testing build or downloads one. (Alternatively point
+// `executablePath` at a system Chrome or the `PUPPETEER_EXECUTABLE_PATH` env var.)
+const executablePath = await ensureChrome();
 
 await withBrowser(puppeteer, { executablePath }, async (browser) => {
   const page = await browser.newPage();
