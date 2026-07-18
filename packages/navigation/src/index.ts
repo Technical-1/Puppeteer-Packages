@@ -1,7 +1,8 @@
-export { goto, waitForNetworkIdle } from "./navigation.js";
+export { goto, navigateOnGesture, waitForNetworkIdle } from "./navigation.js";
 export type {
   GotoOptions,
   WaitUntil,
+  GestureNavigationOptions,
   NetworkIdleOptions,
 } from "./navigation.js";
 export type { RetryOptions } from "@technical-1/retry";

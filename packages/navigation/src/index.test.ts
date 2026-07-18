@@ -3,11 +3,12 @@ import * as nav from "./index.js";
 import type { RetryOptions } from "./index.js";
 
 describe("public surface", () => {
-  it("exposes goto and waitForNetworkIdle only", () => {
+  it("exposes goto, navigateOnGesture, and waitForNetworkIdle only", () => {
     expect(typeof nav.goto).toBe("function");
+    expect(typeof nav.navigateOnGesture).toBe("function");
     expect(typeof nav.waitForNetworkIdle).toBe("function");
     expect(Object.keys(nav).sort()).toEqual(
-      ["goto", "waitForNetworkIdle"].sort(),
+      ["goto", "navigateOnGesture", "waitForNetworkIdle"].sort(),
     );
   });
 });
