@@ -1,4 +1,4 @@
-import { PptrKitError } from "@technical-1/core";
+import { NetworkError } from "@technical-1/core";
 import type { HTTPRequest, Page } from "puppeteer-core";
 import type { BlockPattern } from "./types.js";
 
@@ -37,7 +37,7 @@ function matches(req: HTTPRequest, patterns: readonly BlockPattern[]): boolean {
  * Idempotent across repeat calls — patterns from subsequent calls merge
  * into the live listener.
  *
- * Throws `PptrKitError` (`retryable:false`) when called with an empty
+ * Throws `NetworkError` (`retryable:false`) when called with an empty
  * pattern list (programmer error).
  */
 export async function blockResources(
@@ -45,7 +45,7 @@ export async function blockResources(
   patterns: readonly BlockPattern[],
 ): Promise<void> {
   if (patterns.length === 0) {
-    throw new PptrKitError("blockResources requires at least one pattern", {
+    throw new NetworkError("blockResources requires at least one pattern", {
       retryable: false,
     });
   }

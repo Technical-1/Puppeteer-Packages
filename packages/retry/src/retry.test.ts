@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { withRetry } from "./retry.js";
-import { NavigationError, SelectorNotFoundError } from "@technical-1/core";
+import { NavigationError, SelectorNotFoundError, AbortError } from "@technical-1/core";
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -58,13 +58,17 @@ describe("withRetry", () => {
     expect(fn).toHaveBeenCalledTimes(2);
   });
 
-  it("rejects immediately when the abort signal is already aborted", async () => {
+  it("rejects with a terminal AbortError when the signal is already aborted", async () => {
     const fn = vi.fn().mockResolvedValue("ok");
     const controller = new AbortController();
     controller.abort();
-    await expect(
-      withRetry(fn, { signal: controller.signal }),
-    ).rejects.toThrow(/abort/i);
+    const err = await withRetry(fn, { signal: controller.signal }).catch(
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(AbortError);
+    expect((err as AbortError).name).toBe("AbortError");
+    expect((err as AbortError).retryable).toBe(false);
+    expect((err as Error).message).toMatch(/abort/i);
     expect(fn).not.toHaveBeenCalled();
   });
 
@@ -77,12 +81,14 @@ describe("withRetry", () => {
       jitter: false,
       signal: controller.signal,
     });
-    const assertion = expect(p).rejects.toThrow(/abort/i);
+    const assertion = p.catch((e: unknown) => e);
     // Run attempt 1 (rejects) and enter sleep(1000); 10ms < 1000ms so the
     // timer is pending, not elapsed — withRetry is parked in sleep().
     await vi.advanceTimersByTimeAsync(10);
-    controller.abort(); // fires onAbort -> clearTimeout + reject("Aborted")
-    await assertion;
+    controller.abort(); // fires onAbort -> clearTimeout + reject(AbortError)
+    const err = await assertion;
+    expect(err).toBeInstanceOf(AbortError);
+    expect((err as Error).message).toMatch(/abort/i);
     expect(fn).toHaveBeenCalledTimes(1); // no further attempts after abort
   });
 
@@ -139,9 +145,11 @@ describe("withRetry", () => {
       jitter: false,
       signal: controller.signal,
     });
-    const assertion = expect(p).rejects.toThrow(/abort/i);
+    const assertion = p.catch((e: unknown) => e);
     await vi.runAllTimersAsync();
-    await assertion;
+    const err = await assertion;
+    expect(err).toBeInstanceOf(AbortError);
+    expect((err as Error).message).toMatch(/abort/i);
     // fn ran exactly once; the aborted signal prevented any retry sleep
     expect(fn).toHaveBeenCalledTimes(1);
   });

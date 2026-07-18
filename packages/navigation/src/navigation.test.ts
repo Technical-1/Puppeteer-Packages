@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { AbortError } from "@technical-1/core";
 import { goto, waitForNetworkIdle, navigateOnGesture } from "./navigation.js";
 import type { Page, HTTPResponse } from "puppeteer-core";
 
@@ -99,11 +100,12 @@ describe("goto", () => {
 
     // The intentional cancellation must pass through untouched, NOT become a
     // retryable NavigationError that an outer retry policy would re-attempt.
-    expect(err).toBeInstanceOf(Error);
-    expect((err as Error).name).toBe("Error");
+    // withRetry now throws the discriminable core AbortError (retryable:false).
+    expect(err).toBeInstanceOf(AbortError);
+    expect((err as Error).name).toBe("AbortError");
     expect((err as Error).message).toMatch(/abort/i);
     expect(err).not.toMatchObject({ name: "NavigationError" });
-    expect((err as { retryable?: unknown }).retryable).toBeUndefined();
+    expect((err as { retryable?: unknown }).retryable).toBe(false);
     expect(gotoMock).not.toHaveBeenCalled(); // aborted before any attempt
   });
 
@@ -133,6 +135,30 @@ describe("goto", () => {
     expect(err).toMatchObject({ name: "NavigationError", retryable: true, url: "https://x.test" });
     expect((err as { cause?: unknown }).cause).toBeInstanceOf(Error);
     expect((err as { cause?: Error }).cause?.message).toBe("net::ERR_FAILED");
+  });
+
+  it("passes through a cross-realm AbortError (name match, NOT instanceof the local AbortError class) as terminal", async () => {
+    // Simulates the dual ESM/CJS boundary: a consumer can resolve retry's
+    // copy of @technical-1/core and navigation's copy as two different
+    // modules, so the error withRetry throws is NOT `instanceof` navigation's
+    // imported `AbortError` class even though it genuinely represents an
+    // abort. Only a name check (`err.name === "AbortError"`) is reliable
+    // across that boundary — this proves the guard doesn't secretly still
+    // depend on `instanceof`.
+    const crossRealmAbort = Object.assign(new Error("Aborted"), {
+      name: "AbortError",
+    });
+    expect(crossRealmAbort).not.toBeInstanceOf(AbortError);
+
+    const gotoMock = vi.fn().mockRejectedValue(crossRealmAbort);
+    const page = mockPage({ goto: gotoMock });
+
+    const err = await goto(page, "https://x.test", {
+      retry: { retries: 0, minDelayMs: 0, jitter: false },
+    }).catch((e: unknown) => e);
+
+    expect(err).toBe(crossRealmAbort); // passed through as-is, not wrapped
+    expect(err).not.toMatchObject({ name: "NavigationError" });
   });
 });
 
@@ -207,7 +233,9 @@ describe("navigateOnGesture", () => {
     const err = await navigateOnGesture(page, () => {}, {
       retry: { signal: ac.signal, retries: 3, minDelayMs: 0, jitter: false },
     }).catch((e: unknown) => e);
-    expect((err as Error).name).toBe("Error");
+    expect(err).toBeInstanceOf(AbortError);
+    expect((err as Error).name).toBe("AbortError");
+    expect((err as { retryable?: unknown }).retryable).toBe(false);
     expect(err).not.toMatchObject({ name: "NavigationError" });
     expect(wfn).not.toHaveBeenCalled();
   });

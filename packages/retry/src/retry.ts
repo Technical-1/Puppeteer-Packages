@@ -1,3 +1,4 @@
+import { AbortError } from "@technical-1/core";
 import type { LoggerOption } from "@technical-1/core";
 
 export interface RetryOptions extends LoggerOption {
@@ -45,7 +46,7 @@ function delayFor(attempt: number, o: Required<Pick<RetryOptions, "minDelayMs" |
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
-      reject(new Error("Aborted"));
+      reject(new AbortError());
       return;
     }
     const timer = setTimeout(() => {
@@ -58,7 +59,7 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
     }, ms);
     const onAbort = () => {
       clearTimeout(timer);
-      reject(new Error("Aborted"));
+      reject(new AbortError());
     };
     signal?.addEventListener("abort", onAbort, { once: true });
   });
@@ -81,7 +82,7 @@ export async function withRetry<T>(
   };
   const isRetryable = opts.isRetryable ?? defaultIsRetryable;
 
-  if (opts.signal?.aborted) throw new Error("Aborted before first attempt");
+  if (opts.signal?.aborted) throw new AbortError("Aborted before first attempt");
 
   let attempt = 0;
   // Always exits via `return` (success) or `throw` (exhausted / non-retryable / aborted).

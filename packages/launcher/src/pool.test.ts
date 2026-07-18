@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { PoolError } from "@technical-1/core";
 import { BrowserPool } from "./pool.js";
 
 function deferred<T>() {
@@ -81,11 +82,14 @@ describe("BrowserPool", () => {
     await pool.acquire();
     const waiter = pool.acquire();
     const settled = waiter.then(
-      () => "resolved",
-      (e) => `rejected:${(e as Error).message}`,
+      () => null,
+      (e) => e,
     );
     await pool.drain();
-    expect(await settled).toMatch(/rejected:.*drained/);
+    const err = await settled;
+    expect(err).toBeInstanceOf(PoolError);
+    expect(err).toMatchObject({ name: "PoolError", retryable: false });
+    expect((err as Error).message).toMatch(/drained/);
   });
 
   it("drain() attempts every close and aggregates failures", async () => {
@@ -97,7 +101,20 @@ describe("BrowserPool", () => {
     const a = await pool.acquire();
     await pool.acquire();
     pool.release(a);
-    await expect(pool.drain()).rejects.toThrow(/failed to close/);
+    let caught: unknown;
+    try {
+      await pool.drain();
+      expect.unreachable("drain() should have thrown");
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(PoolError);
+    expect(caught).toMatchObject({ name: "PoolError", retryable: false });
+    expect((caught as Error).message).toMatch(/failed to close/);
+    // The aggregated close reasons must still be reachable off the PoolError.
+    const context = (caught as PoolError).context as { reasons?: unknown[] };
+    expect(context.reasons).toHaveLength(1);
+    expect((context.reasons?.[0] as Error).message).toBe("close boom");
     expect(good.close).toHaveBeenCalledTimes(1);
     expect(bad.close).toHaveBeenCalledTimes(1);
   });
@@ -108,7 +125,16 @@ describe("BrowserPool", () => {
     };
     const pool = new BrowserPool(puppeteer as never, { executablePath: "/c" }, { size: 1 });
     await pool.drain();
-    await expect(pool.acquire()).rejects.toThrow(/drained/);
+    let caught: unknown;
+    try {
+      await pool.acquire();
+      expect.unreachable("acquire() after drain should have thrown");
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(PoolError);
+    expect(caught).toMatchObject({ name: "PoolError", retryable: false });
+    expect((caught as Error).message).toMatch(/drained/);
   });
 
   it("ignores release of a foreign or double-released browser", async () => {
@@ -163,8 +189,17 @@ describe("BrowserPool", () => {
     // Now unblock the launch — browser resolves, but pool is drained
     launchGate.resolve();
 
-    // The acquire should reject with "drained"
-    await expect(acquirePromise).rejects.toThrow(/drained/);
+    // The acquire should reject with a terminal PoolError mentioning "drained"
+    let caught: unknown;
+    try {
+      await acquirePromise;
+      expect.unreachable("acquire() should have rejected");
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(PoolError);
+    expect(caught).toMatchObject({ name: "PoolError", retryable: false });
+    expect((caught as Error).message).toMatch(/drained/);
     // drain itself should succeed (no browsers were tracked in idle/busy before drain)
     await drainPromise;
     // The in-flight browser should have been closed to avoid a leak
@@ -233,8 +268,17 @@ describe("BrowserPool", () => {
     // Unblock #serveNextWaiter's launch — but pool is now drained
     serveGate.resolve();
 
-    // Waiter should be rejected (drained)
-    await expect(waiterPromise).rejects.toThrow(/drained/);
+    // Waiter should be rejected with a terminal PoolError (drained)
+    let caught: unknown;
+    try {
+      await waiterPromise;
+      expect.unreachable("waiterPromise should have rejected");
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(PoolError);
+    expect(caught).toMatchObject({ name: "PoolError", retryable: false });
+    expect((caught as Error).message).toMatch(/drained/);
     await drainPromise;
     expect(browser.close).toHaveBeenCalledOnce();
   });
@@ -275,27 +319,31 @@ describe("BrowserPool size validation", () => {
   const puppeteer = { launch: vi.fn() };
   const opts = { executablePath: "/c" };
 
-  it("throws a terminal PptrKitError for size: 0", () => {
+  it("throws a terminal PoolError for size: 0", () => {
     try {
       new BrowserPool(puppeteer as never, opts, { size: 0 });
-      throw new Error("expected constructor to throw");
+      expect.unreachable("should have thrown");
     } catch (err) {
-      expect(err).toMatchObject({ name: "PptrKitError", retryable: false });
+      expect(err).toBeInstanceOf(PoolError);
+      expect(err).toMatchObject({ name: "PoolError", retryable: false });
       expect((err as { context: { size: number } }).context.size).toBe(0);
     }
     expect(puppeteer.launch).not.toHaveBeenCalled();
   });
 
   it("throws for a negative size", () => {
+    expect(() => new BrowserPool(puppeteer as never, opts, { size: -2 })).toThrow(PoolError);
     expect(() => new BrowserPool(puppeteer as never, opts, { size: -2 })).toThrow(
       /positive integer/,
     );
   });
 
   it("throws for a non-integer / NaN size", () => {
+    expect(() => new BrowserPool(puppeteer as never, opts, { size: 1.5 })).toThrow(PoolError);
     expect(() => new BrowserPool(puppeteer as never, opts, { size: 1.5 })).toThrow(
       /positive integer/,
     );
+    expect(() => new BrowserPool(puppeteer as never, opts, { size: NaN })).toThrow(PoolError);
     expect(() => new BrowserPool(puppeteer as never, opts, { size: NaN })).toThrow(
       /positive integer/,
     );

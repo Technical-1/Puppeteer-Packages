@@ -18,14 +18,14 @@ export interface ResponseRecord {
   /**
    * Lazily fetch the raw response body. Opt-in: only enabled when this
    * response's `resourceType` matched the `body` gate passed to
-   * `captureResponses`; otherwise throws a terminal `PptrKitError`. Must be
+   * `captureResponses`; otherwise throws a terminal `NetworkError`. Must be
    * awaited before the page navigates away (puppeteer discards the body
    * afterwards). Result is cached after the first successful pull.
    */
   buffer(): Promise<Uint8Array>;
   /** UTF-8 decode of `buffer()`. Same opt-in / caching rules. */
   text(): Promise<string>;
-  /** `JSON.parse(text())`. Throws a terminal `PptrKitError` on malformed JSON. */
+  /** `JSON.parse(text())`. Throws a terminal `NetworkError` on malformed JSON. */
   json(): Promise<unknown>;
 }
 

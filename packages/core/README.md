@@ -8,7 +8,8 @@ Exports:
 
 - **Typed error hierarchy** — `PptrKitError` (base) and
   `SelectorNotFoundError`, `NavigationError`, `TimeoutError`, `CaptchaError`,
-  `ProxyError`, `SessionError`. Each carries a `retryable` flag and a
+  `ProxyError`, `SessionError`, `ConfigError`, `PoolError`, `DownloadError`,
+  `NetworkError`, `AbortError`. Each carries a `retryable` flag and a
   structured `context`.
 - **`Logger` interface** — the dependency-injected logging contract. No
   implementation lives here (see `@technical-1/logger`).
@@ -41,3 +42,8 @@ function isRetryable(err: unknown): boolean {
 `err.name` (e.g. `"NavigationError"`) is the cross-realm-safe discriminant
 for the specific error type; `err.retryable` is the cross-realm-safe
 retry signal.
+
+`AbortError` (`name === "AbortError"`, `retryable: false`) is the
+cross-realm-safe cancellation discriminant: when an operation is cancelled
+via an `AbortSignal`, consumers detect it by name rather than by matching
+the message string.

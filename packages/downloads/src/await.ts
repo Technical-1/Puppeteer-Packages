@@ -1,4 +1,4 @@
-import { PptrKitError } from "@technical-1/core";
+import { DownloadError, TimeoutError } from "@technical-1/core";
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { Stats } from "node:fs";
@@ -26,7 +26,7 @@ function sleep(ms: number): Promise<void> {
  * Snapshot `dir`, invoke `triggerFn`, and poll the directory until a new
  * non-`.crdownload` file appears. Returns `{path, filename, size}`.
  *
- * Throws `PptrKitError` (`retryable:true`) on timeout (default 30s).
+ * Throws `TimeoutError` (`retryable:true`) on timeout (default 30s).
  *
  * The public surface accepts only `timeoutMs` / `pollMs`. The
  * `readdir`/`stat` injection seams used by unit tests are kept off the
@@ -62,13 +62,13 @@ export async function awaitDownloadForTesting(
   try {
     before = new Set(await _readdir(dir));
   } catch (cause) {
-    throw new PptrKitError("awaitDownload: failed to snapshot directory", { retryable: false, cause });
+    throw new DownloadError("awaitDownload: failed to snapshot directory", { retryable: false, cause });
   }
 
   try {
     await triggerFn();
   } catch (cause) {
-    throw new PptrKitError("awaitDownload: trigger threw", { retryable: false, cause });
+    throw new DownloadError("awaitDownload: trigger threw", { retryable: false, cause });
   }
 
   const deadline = Date.now() + timeoutMs;
@@ -85,9 +85,9 @@ export async function awaitDownloadForTesting(
     } catch (cause) {
       // A mid-poll fs failure — dir removed, or a file vanished between the
       // readdir listing and the stat (a real .crdownload→final rename race).
-      // Transient => retryable:true, and it MUST stay inside the PptrKitError
+      // Transient => retryable:true, and it MUST stay inside the DownloadError
       // contract rather than leaking a raw Node error to the caller.
-      throw new PptrKitError("awaitDownload: directory read failed during polling", {
+      throw new DownloadError("awaitDownload: directory read failed during polling", {
         retryable: true,
         cause,
         context: { dir },
@@ -96,7 +96,7 @@ export async function awaitDownloadForTesting(
     await sleep(pollMs);
   }
 
-  throw new PptrKitError(`awaitDownload: no new file in ${dir} within ${timeoutMs}ms`, {
+  throw new TimeoutError(`awaitDownload: no new file in ${dir} within ${timeoutMs}ms`, {
     retryable: true,
     context: { dir, timeoutMs },
   });

@@ -10,7 +10,7 @@ export interface DownloadResult {
 
 /** Options for `awaitDownload`. */
 export interface AwaitDownloadOptions {
-  /** Milliseconds before rejecting with a PptrKitError. Default 30_000. */
+  /** Milliseconds before rejecting with a TimeoutError. Default 30_000. */
   timeoutMs?: number;
   /** Polling interval in ms. Default 100. */
   pollMs?: number;

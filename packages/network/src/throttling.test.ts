@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import type { CDPSession, Page } from "puppeteer-core";
+import { NetworkError } from "@technical-1/core";
 import { setOffline, throttle, THROTTLE_PROFILES } from "./throttling.js";
 
 function pageMock() {
@@ -21,14 +22,15 @@ describe("throttle", () => {
     );
   });
 
-  it("wraps CDP failures in PptrKitError (retryable:true)", async () => {
+  it("wraps CDP failures in NetworkError (retryable:true)", async () => {
     const send = vi.fn().mockRejectedValue(new Error("CDP closed"));
     const session = { send } as unknown as CDPSession;
     const target = { createCDPSession: vi.fn().mockResolvedValue(session) };
     const page = { target: () => target } as unknown as Page;
 
+    await expect(throttle(page, THROTTLE_PROFILES.FAST_3G)).rejects.toBeInstanceOf(NetworkError);
     await expect(throttle(page, THROTTLE_PROFILES.FAST_3G)).rejects.toMatchObject({
-      name: "PptrKitError",
+      name: "NetworkError",
       retryable: true,
       cause: expect.objectContaining({ message: "CDP closed" }),
     });
@@ -53,10 +55,7 @@ describe("throttle", () => {
     const target = { createCDPSession: vi.fn().mockResolvedValue(session) };
     const page = { target: () => target } as unknown as Page;
 
-    await expect(throttle(page, THROTTLE_PROFILES.SLOW_3G)).rejects.toMatchObject({
-      name: "PptrKitError",
-      retryable: true,
-    });
+    await expect(throttle(page, THROTTLE_PROFILES.SLOW_3G)).rejects.toBeInstanceOf(NetworkError);
     expect(target.createCDPSession).toHaveBeenCalledTimes(1);
 
     await throttle(page, THROTTLE_PROFILES.FAST_3G);

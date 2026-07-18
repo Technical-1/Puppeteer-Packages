@@ -22,14 +22,14 @@ describe("enableDownloads", () => {
     });
   });
 
-  it("wraps CDP failures in PptrKitError (retryable:true) with cause", async () => {
+  it("wraps CDP failures in DownloadError (retryable:true) with cause", async () => {
     const send = vi.fn().mockRejectedValue(new Error("CDP closed"));
     const session = { send } as unknown as CDPSession;
     const target = { createCDPSession: vi.fn().mockResolvedValue(session) };
     const browser = { target: () => target } as unknown as Browser;
 
     await expect(enableDownloads(browser, "/tmp")).rejects.toMatchObject({
-      name: "PptrKitError",
+      name: "DownloadError",
       retryable: true,
       cause: expect.objectContaining({ message: "CDP closed" }),
     });
