@@ -65,3 +65,51 @@ export class SessionError extends PptrKitError {
     super(message, { retryable: false, ...opts });
   }
 }
+
+/** A required configuration value was missing or invalid. Terminal. */
+export class ConfigError extends PptrKitError {
+  constructor(message: string, opts: PptrKitErrorOptions = {}) {
+    super(message, { retryable: false, ...opts });
+  }
+}
+
+/** A browser-pool misuse (bad size, use-after-drain). Terminal. */
+export class PoolError extends PptrKitError {
+  constructor(message: string, opts: PptrKitErrorOptions = {}) {
+    super(message, { retryable: false, ...opts });
+  }
+}
+
+/**
+ * A file-download operation failed. Terminal by default; transient
+ * download failures (CDP hiccup, mid-poll fs race) pass `retryable:true`
+ * explicitly at the throw site.
+ */
+export class DownloadError extends PptrKitError {
+  constructor(message: string, opts: PptrKitErrorOptions = {}) {
+    super(message, { retryable: false, ...opts });
+  }
+}
+
+/**
+ * A network-layer operation failed. Terminal by default (covers programmer
+ * misuse — empty pattern list, body capture not enabled, invalid JSON);
+ * transient CDP/body-read failures pass `retryable:true` explicitly.
+ */
+export class NetworkError extends PptrKitError {
+  constructor(message: string, opts: PptrKitErrorOptions = {}) {
+    super(message, { retryable: false, ...opts });
+  }
+}
+
+/**
+ * An operation was cancelled via an `AbortSignal`. Terminal (never retried):
+ * the caller asked to stop. Its stable `name === "AbortError"` is the
+ * cross-realm-safe cancellation discriminant — consumers detect aborts by
+ * name, not by matching the message string.
+ */
+export class AbortError extends PptrKitError {
+  constructor(message = "Aborted", opts: PptrKitErrorOptions = {}) {
+    super(message, { retryable: false, ...opts });
+  }
+}

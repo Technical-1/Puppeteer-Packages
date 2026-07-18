@@ -6,6 +6,11 @@ export {
   CaptchaError,
   ProxyError,
   SessionError,
+  ConfigError,
+  PoolError,
+  DownloadError,
+  NetworkError,
+  AbortError,
 } from "./errors.js";
 export type { ErrorContext, PptrKitErrorOptions } from "./errors.js";
 export { LOG_LEVELS } from "./logger.js";
