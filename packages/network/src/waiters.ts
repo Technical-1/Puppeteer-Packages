@@ -25,7 +25,22 @@ export async function waitForRequest(
   try {
     return await page.waitForRequest(predicate, { timeout: timeoutMs, signal });
   } catch (cause) {
-    if (signal?.aborted) throw cause;
+    // Detection must be based on the ERROR'S PROVENANCE, not just current
+    // signal state: puppeteer races timeout(ms) / fromAbortSignal(signal) /
+    // close together, so on abort it throws `signal.reason` directly, while
+    // on timeout it throws its OWN TimeoutError. Checking only
+    // `signal?.aborted` admits a race where the caller aborts the (possibly
+    // shared) signal in the microtask window after puppeteer's timeout has
+    // already won and rejected — `signal.aborted` reads true even though the
+    // thrown error is the unrelated genuine timeout, so a state-only check
+    // would rethrow that raw, non-retryable error instead of wrapping it.
+    // Match on the thrown error itself: either it *is* `signal.reason`
+    // (the exact object puppeteer throws for an abort), or it's a default
+    // `AbortController.abort()` DOMException named "AbortError".
+    const isAbortError =
+      (signal?.aborted === true && cause === signal.reason) ||
+      (cause instanceof Error && cause.name === "AbortError");
+    if (isAbortError) throw cause;
     throw new TimeoutError(`waitForRequest: predicate not satisfied within ${timeoutMs}ms`, {
       context: { timeoutMs },
       cause,
@@ -47,7 +62,15 @@ export async function waitForResponse(
   try {
     return await page.waitForResponse(predicate, { timeout: timeoutMs, signal });
   } catch (cause) {
-    if (signal?.aborted) throw cause;
+    // Same provenance-based abort guard as `waitForRequest` (see the comment
+    // there): match on the thrown error itself, not just signal state, so a
+    // genuine timeout that races with an unrelated signal abort still wraps
+    // as a retryable TimeoutError instead of being misclassified as a
+    // terminal abort passthrough.
+    const isAbortError =
+      (signal?.aborted === true && cause === signal.reason) ||
+      (cause instanceof Error && cause.name === "AbortError");
+    if (isAbortError) throw cause;
     throw new TimeoutError(`waitForResponse: predicate not satisfied within ${timeoutMs}ms`, {
       context: { timeoutMs },
       cause,
