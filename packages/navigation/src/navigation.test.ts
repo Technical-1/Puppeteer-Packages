@@ -86,6 +86,26 @@ describe("goto", () => {
     const result = await goto(page, "https://x.test");
     expect(result).toBeNull();
   });
+
+  it("rethrows an aborted retry as-is (terminal), not a retryable NavigationError", async () => {
+    const ac = new AbortController();
+    ac.abort(); // already aborted → withRetry throws before the first attempt
+    const gotoMock = vi.fn().mockRejectedValue(new Error("net::ERR_FAILED"));
+    const page = mockPage({ goto: gotoMock });
+
+    const err = await goto(page, "https://x.test", {
+      retry: { signal: ac.signal, retries: 3, minDelayMs: 0, jitter: false },
+    }).catch((e: unknown) => e);
+
+    // The intentional cancellation must pass through untouched, NOT become a
+    // retryable NavigationError that an outer retry policy would re-attempt.
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).name).toBe("Error");
+    expect((err as Error).message).toMatch(/abort/i);
+    expect(err).not.toMatchObject({ name: "NavigationError" });
+    expect((err as { retryable?: unknown }).retryable).toBeUndefined();
+    expect(gotoMock).not.toHaveBeenCalled(); // aborted before any attempt
+  });
 });
 
 describe("waitForNetworkIdle", () => {

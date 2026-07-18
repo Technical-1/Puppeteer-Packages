@@ -53,6 +53,13 @@ export async function goto(
       },
     );
   } catch (err) {
+    // A caller-cancelled navigation (aborted retry.signal) surfaces from
+    // withRetry as a plain Error("Aborted…"). Do NOT rewrap it as a retryable
+    // NavigationError — that would let an outer retry policy re-attempt a
+    // navigation the caller explicitly cancelled. Pass the abort through as-is
+    // (terminal: a plain Error carries no `retryable`, so the suite property
+    // contract reads it as non-retryable).
+    if (opts.retry?.signal?.aborted) throw err;
     throw new NavigationError(url, { cause: err, context: { url, waitUntil } });
   }
   opts.logger?.log(`loaded ${url}`, "success");
