@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { DownloadError, TimeoutError } from "@technical-1/core";
 import { awaitDownloadForTesting as awaitDownload, awaitDownload as awaitDownloadPublic } from "./await.js";
 
 describe("awaitDownload", () => {
@@ -44,14 +45,14 @@ describe("awaitDownload", () => {
     });
 
     const a = expect(p).rejects.toMatchObject({
-      name: "PptrKitError",
+      name: "TimeoutError",
       retryable: true,
     });
     await vi.runAllTimersAsync();
     await a;
   });
 
-  it("rejects with PptrKitError(retryable:true) on timeout", async () => {
+  it("rejects with a retryable TimeoutError on timeout", async () => {
     const trigger = vi.fn(async () => undefined);
 
     const p = awaitDownload("/dl", trigger, {
@@ -62,11 +63,12 @@ describe("awaitDownload", () => {
     });
 
     const a = expect(p).rejects.toMatchObject({
-      name: "PptrKitError",
+      name: "TimeoutError",
       retryable: true,
     });
     await vi.runAllTimersAsync();
     await a;
+    await expect(p).rejects.toBeInstanceOf(TimeoutError);
   });
 
   it("snapshots dir BEFORE trigger so prior files are ignored", async () => {
@@ -88,7 +90,7 @@ describe("awaitDownload", () => {
     expect(file.filename).toBe("new.zip"); // NOT "leftover.zip"
   });
 
-  it("rejects with PptrKitError(retryable:true) when stat throws mid-poll (rename race)", async () => {
+  it("rejects with DownloadError(retryable:true) when stat throws mid-poll (rename race)", async () => {
     const cause = new Error("ENOENT: file vanished between readdir and stat");
     let calls = 0;
     const trigger = vi.fn(async () => {});
@@ -102,7 +104,7 @@ describe("awaitDownload", () => {
     });
 
     const a = expect(p).rejects.toMatchObject({
-      name: "PptrKitError",
+      name: "DownloadError",
       retryable: true,
       cause: expect.objectContaining({ message: cause.message }),
     });
@@ -110,7 +112,7 @@ describe("awaitDownload", () => {
     await a;
   });
 
-  it("rejects with PptrKitError(retryable:true) when readdir throws mid-poll", async () => {
+  it("rejects with DownloadError(retryable:true) when readdir throws mid-poll", async () => {
     const cause = new Error("ENOENT: download dir removed mid-poll");
     let calls = 0;
     const trigger = vi.fn(async () => {});
@@ -124,7 +126,7 @@ describe("awaitDownload", () => {
     });
 
     const a = expect(p).rejects.toMatchObject({
-      name: "PptrKitError",
+      name: "DownloadError",
       retryable: true,
       cause: expect.objectContaining({ message: cause.message }),
     });
@@ -132,7 +134,7 @@ describe("awaitDownload", () => {
     await a;
   });
 
-  it("rejects with PptrKitError(retryable:false) when readdir throws during initial snapshot", async () => {
+  it("rejects with DownloadError(retryable:false) when readdir throws during initial snapshot", async () => {
     const cause = new Error("ENOENT: no such file or directory");
     const trigger = vi.fn();
 
@@ -144,7 +146,7 @@ describe("awaitDownload", () => {
         pollMs: 50,
       }),
     ).rejects.toMatchObject({
-      name: "PptrKitError",
+      name: "DownloadError",
       retryable: false,
       cause: expect.objectContaining({ message: cause.message }),
     });
@@ -152,7 +154,7 @@ describe("awaitDownload", () => {
     expect(trigger).not.toHaveBeenCalled();
   });
 
-  it("rejects with PptrKitError(retryable:false) when triggerFn throws", async () => {
+  it("rejects with DownloadError(retryable:false) when triggerFn throws", async () => {
     const cause = new Error("click failed");
 
     await expect(
@@ -163,7 +165,7 @@ describe("awaitDownload", () => {
         pollMs: 50,
       }),
     ).rejects.toMatchObject({
-      name: "PptrKitError",
+      name: "DownloadError",
       retryable: false,
       cause: expect.objectContaining({ message: "click failed" }),
     });
@@ -201,7 +203,7 @@ describe("awaitDownload", () => {
     await expect(
       awaitDownload("/__nonexistent_path_for_test__", async () => {}),
     ).rejects.toMatchObject({
-      name: "PptrKitError",
+      name: "DownloadError",
       retryable: false,
     });
   });

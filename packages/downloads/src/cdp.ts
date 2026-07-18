@@ -1,4 +1,4 @@
-import { PptrKitError } from "@technical-1/core";
+import { DownloadError } from "@technical-1/core";
 import type { Browser } from "puppeteer-core";
 
 /**
@@ -10,7 +10,7 @@ import type { Browser } from "puppeteer-core";
  * Idempotent: calling again with the same dir is a no-op for Chrome.
  * Calling with a different dir overrides the previous behavior.
  *
- * Throws `PptrKitError` (`retryable:true`) wrapping CDP failures as `cause`.
+ * Throws `DownloadError` (`retryable:true`) wrapping CDP failures as `cause`.
  */
 export async function enableDownloads(browser: Browser, dir: string): Promise<void> {
   try {
@@ -21,6 +21,6 @@ export async function enableDownloads(browser: Browser, dir: string): Promise<vo
       eventsEnabled: true,
     });
   } catch (cause) {
-    throw new PptrKitError("enableDownloads failed", { retryable: true, cause });
+    throw new DownloadError("enableDownloads failed", { retryable: true, cause });
   }
 }
