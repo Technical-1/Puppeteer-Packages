@@ -62,3 +62,36 @@ describe("emulateDevice — arbitrary viewport", () => {
     );
   });
 });
+
+describe("emulateDevice — custom Device", () => {
+  const device = {
+    userAgent: "Mozilla/5.0 (custom) Chrome/144.0.0.0",
+    viewport: { width: 375, height: 812, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
+  };
+
+  it("applies a Device via page.emulate and never calls setViewport", async () => {
+    const page = mockPage();
+    await emulateDevice(page, device);
+    expect(page.emulate).toHaveBeenCalledWith(device);
+    expect(page.emulate).toHaveBeenCalledTimes(1);
+    expect(page.setViewport).not.toHaveBeenCalled();
+  });
+
+  it("emits DI logger step/success lines for a custom device", async () => {
+    const page = mockPage();
+    const logger = { log: vi.fn() };
+    await emulateDevice(page, device, { logger });
+    expect(logger.log).toHaveBeenCalledWith("emulating custom device", "step");
+    expect(logger.log).toHaveBeenCalledWith("emulated custom device", "success");
+  });
+
+  it("wraps a page.emulate failure as retryable PptrKitError with cause", async () => {
+    const boom = new Error("session detached");
+    const page = mockPage({ emulate: vi.fn().mockRejectedValue(boom) });
+    await expect(emulateDevice(page, device)).rejects.toMatchObject({
+      name: "PptrKitError",
+      retryable: true,
+      cause: boom,
+    });
+  });
+});

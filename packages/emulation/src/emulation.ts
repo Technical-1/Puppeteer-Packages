@@ -36,6 +36,24 @@ export interface EmulateDeviceOptions extends LoggerOption {}
  * error). Wraps a `page.emulate` / `page.setViewport` rejection as `PptrKitError`
  * `retryable:true` carrying the original as `cause`.
  */
+/** Narrows to a full `Device` (`{ userAgent, viewport }`) as opposed to a bare `Viewport`. */
+function isDevice(target: Device | Viewport): target is Device {
+  return "userAgent" in target;
+}
+
+/** Apply a full Device (UA + viewport) via page.emulate, wrapping failures. */
+async function applyDevice(page: Page, device: Device, label: string): Promise<void> {
+  try {
+    await page.emulate(device);
+  } catch (cause) {
+    throw new PptrKitError(`emulateDevice: page.emulate failed (${label})`, {
+      retryable: true,
+      cause,
+      context: { device: label },
+    });
+  }
+}
+
 export async function emulateDevice(
   page: Page,
   target: EmulationTarget,
@@ -43,7 +61,16 @@ export async function emulateDevice(
 ): Promise<void> {
   const { logger } = options;
 
-  // Viewport branch (bare { width, height, ... }). Device/preset branches added in Task 3/4.
+  // Preset-name (string) branch is added in Task 4.
+
+  if (isDevice(target as Device | Viewport)) {
+    const device = target as Device;
+    logger?.log("emulating custom device", "step");
+    await applyDevice(page, device, "custom device");
+    logger?.log("emulated custom device", "success");
+    return;
+  }
+
   const viewport = target as Viewport;
   logger?.log(`setting viewport ${viewport.width}x${viewport.height}`, "step");
   try {
