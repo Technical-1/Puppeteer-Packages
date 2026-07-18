@@ -1,9 +1,16 @@
 import type { Dialog, Page } from "puppeteer-core";
 import type { LoggerOption } from "@technical-1/core";
-import type { DialogDisposition, DialogEvent } from "./types.js";
+import type {
+  DialogDisposition,
+  DialogEvent,
+  DialogKind,
+  DialogPolicy,
+} from "./types.js";
 
 export interface HandleDialogsOptions extends LoggerOption {
-  /** Action for any dialog kind not covered by a policy. Default "dismiss". */
+  /** Per-kind overrides. Kinds omitted here use `defaultAction`. */
+  policy?: DialogPolicy;
+  /** Action for any dialog kind not covered by `policy`. Default "dismiss". */
   defaultAction?: DialogDisposition;
 }
 
@@ -30,7 +37,9 @@ export function handleDialogs(
   let disposed = false;
 
   const respond = async (dialog: Dialog): Promise<void> => {
-    const action: DialogDisposition = defaultAction;
+    const type = dialog.type() as DialogKind;
+    const rule = opts.policy?.[type];
+    const action: DialogDisposition = rule?.action ?? defaultAction;
     if (action === "accept") {
       await dialog.accept(undefined);
     } else {

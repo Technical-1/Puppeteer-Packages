@@ -65,3 +65,34 @@ describe("handleDialogs — default action", () => {
     expect(dialog.dismiss).not.toHaveBeenCalled();
   });
 });
+
+describe("handleDialogs — per-type policy", () => {
+  it("uses the policy action for the matching kind", async () => {
+    const { page, fire } = pageMock();
+    handleDialogs(page, {
+      defaultAction: "dismiss",
+      policy: { confirm: { action: "accept" } },
+    });
+    const dialog = dialogMock({ type: "confirm" });
+
+    fire(dialog);
+    await flush();
+
+    expect(dialog.accept).toHaveBeenCalledWith(undefined);
+  });
+
+  it("falls back to defaultAction for kinds absent from the policy", async () => {
+    const { page, fire } = pageMock();
+    handleDialogs(page, {
+      defaultAction: "accept",
+      policy: { confirm: { action: "dismiss" } },
+    });
+    const alert = dialogMock({ type: "alert" });
+
+    fire(alert);
+    await flush();
+
+    expect(alert.accept).toHaveBeenCalledWith(undefined);
+    expect(alert.dismiss).not.toHaveBeenCalled();
+  });
+});
