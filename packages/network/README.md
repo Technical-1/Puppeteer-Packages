@@ -14,6 +14,7 @@ import {
   waitForRequest,
   waitForResponse,
 } from "@technical-1/network";
+import { safeClick } from "@technical-1/interaction-helpers"; // used in the waiter example below
 
 // Block images + analytics URLs:
 await blockResources(page, ["image", /google-analytics/]);
