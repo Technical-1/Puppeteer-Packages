@@ -11,6 +11,8 @@ describe("@technical-1/network public surface", () => {
         "setOffline",
         "throttle",
         "unblockResources",
+        "waitForRequest",
+        "waitForResponse",
       ].sort(),
     );
   });
