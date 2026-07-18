@@ -25,18 +25,6 @@ export type EmulationTarget = KnownDeviceName | Device | Viewport;
 export interface EmulateDeviceOptions extends LoggerOption {}
 
 /**
- * True when `target` is a `Device` (carries a `userAgent`), false for a bare `Viewport`.
- *
- * Not yet called: the Device/preset dispatch branch that uses this lands in Task 3.
- * Introduced now so the discriminator (and the `Device`/`KnownDevices` type surface it
- * depends on) is stable across tasks instead of being re-derived per branch.
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- consumed by the Task 3 dispatch branch
-function isDevice(target: Device | Viewport): target is Device {
-  return "userAgent" in target;
-}
-
-/**
  * Emulate a device, custom device, or viewport on `page`.
  *
  * - Pass a `KnownDevices` preset name (e.g. `"iPhone 15 Pro"`) or a full `Device`
