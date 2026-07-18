@@ -14,3 +14,5 @@ export {
   THROTTLE_PROFILES,
 } from "./throttling.js";
 export type { ThrottleProfileName } from "./throttling.js";
+export { waitForRequest, waitForResponse } from "./waiters.js";
+export type { WaitForEventOptions } from "./waiters.js";

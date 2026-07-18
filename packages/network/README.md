@@ -11,6 +11,8 @@ import {
   throttle,
   setOffline,
   THROTTLE_PROFILES,
+  waitForRequest,
+  waitForResponse,
 } from "@technical-1/network";
 
 // Block images + analytics URLs:
@@ -27,6 +29,12 @@ await throttle(page, THROTTLE_PROFILES.FAST_3G);
 
 // Go offline:
 await setOffline(page, true);
+
+// Wait for one specific XHR fired by a UI action:
+await Promise.all([
+  waitForResponse(page, (res) => res.url().includes("/api/search") && res.status() === 200),
+  safeClick(page, "#search-button"),
+]);
 ```
 
 ## v1 limitations
@@ -47,6 +55,9 @@ Throws `PptrKitError` from `@technical-1/core` wrapping the underlying
 puppeteer-core / CDP failure as `cause`. Transient I/O (`offline:true`
 applied while the page was navigating) is `retryable:true`; programmer
 errors (empty pattern list) are `retryable:false`.
+
+`waitForRequest` / `waitForResponse` surface a timeout as a `TimeoutError`
+(`retryable:true`); a caller `AbortSignal` cancellation propagates unchanged.
 
 ## Peer
 
