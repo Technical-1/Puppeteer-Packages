@@ -6,6 +6,7 @@ import type { SessionSnapshot } from "./types.js";
 // module-scoped so the file's TypeScript stays Node-only (no DOM lib).
 declare var localStorage: { length: number; key(i: number): string | null; getItem(k: string): string | null; setItem(k: string, v: string): void };
 declare var sessionStorage: { length: number; key(i: number): string | null; getItem(k: string): string | null; setItem(k: string, v: string): void };
+declare var location: { origin: string };
 
 /**
  * Read all cookies + localStorage + sessionStorage from `page`. Returns a
@@ -21,7 +22,7 @@ export async function captureSession(page: Page): Promise<SessionSnapshot> {
   try {
     const cookies = await page.browserContext().cookies();
     const storage = await page.evaluate(
-      /* v8 ignore next 14 -- runs in-browser; covered by the integration tier */
+      /* v8 ignore next 15 -- runs in-browser; covered by the integration tier */
       () => {
         const dump = (s: typeof localStorage): Record<string, string> => {
           const out: Record<string, string> = {};
@@ -34,7 +35,7 @@ export async function captureSession(page: Page): Promise<SessionSnapshot> {
           }
           return out;
         };
-        return { local: dump(localStorage), session: dump(sessionStorage) };
+        return { local: dump(localStorage), session: dump(sessionStorage), origin: location.origin };
       },
     );
 
@@ -42,6 +43,7 @@ export async function captureSession(page: Page): Promise<SessionSnapshot> {
       cookies,
       localStorage: storage.local,
       sessionStorage: storage.session,
+      origin: storage.origin,
       capturedAt: new Date().toISOString(),
     };
   } catch (cause) {
@@ -53,8 +55,13 @@ export async function captureSession(page: Page): Promise<SessionSnapshot> {
  * Apply a `SessionSnapshot` to `page`: sets cookies on `page.browserContext()`
  * (the non-deprecated v24 path) and queues the storage write via
  * `evaluateOnNewDocument` so it lands BEFORE the next navigation. Caller
- * must navigate to a matching origin to observe the restored storage
+ * must navigate to `snapshot.origin` to observe the restored storage
  * (browsers scope storage to origin).
+ *
+ * The injected script early-returns unless the page's live `location.origin`
+ * equals `snapshot.origin`, so the restored storage can only ever be written
+ * onto its originating origin — a page reused across origins never leaks one
+ * origin's storage onto a foreign one.
  *
  * Throws `SessionError` (terminal — `retryable:false`) wrapping any failure.
  */
@@ -67,13 +74,15 @@ export async function restoreSession(
       await page.browserContext().setCookie(...snapshot.cookies);
     }
     await page.evaluateOnNewDocument(
-      /* v8 ignore next 4 -- runs in-browser; covered by the integration tier */
-      (local: Record<string, string>, session: Record<string, string>) => {
+      /* v8 ignore next 5 -- runs in-browser; covered by the integration tier */
+      (local: Record<string, string>, session: Record<string, string>, origin: string) => {
+        if (location.origin !== origin) return; // never write onto a foreign origin
         for (const [k, v] of Object.entries(local)) localStorage.setItem(k, v);
         for (const [k, v] of Object.entries(session)) sessionStorage.setItem(k, v);
       },
       snapshot.localStorage,
       snapshot.sessionStorage,
+      snapshot.origin,
     );
   } catch (cause) {
     throw new SessionError(

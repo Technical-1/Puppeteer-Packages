@@ -18,7 +18,14 @@ function pageMock(): Page {
  */
 function makeCallbackCapturePage(): {
   page: Page;
-  runCallback: (fakeDocument: { querySelector: (s: string) => { innerText: string } | null }) => boolean;
+  runCallback: (fakeDocument: {
+    querySelector: (s: string) => {
+      tagName?: string;
+      value?: string;
+      innerText?: string;
+      dispatchEvent?: (e: { type: string }) => boolean;
+    } | null;
+  }) => boolean;
 } {
   let capturedFn: ((sel: string, tok: string) => boolean) | undefined;
   let capturedSel = "";
@@ -43,7 +50,18 @@ function makeCallbackCapturePage(): {
       // Provide a local `document` binding to simulate the in-browser global.
       const hadDocument = Object.prototype.hasOwnProperty.call(g, "document");
       const prevDocument: unknown = g["document"];
+      const hadEvent = Object.prototype.hasOwnProperty.call(g, "Event");
+      const prevEvent: unknown = g["Event"];
       g["document"] = fakeDocument;
+      // Minimal in-page Event stub: records type + bubbles for dispatchEvent.
+      g["Event"] = class {
+        type: string;
+        bubbles: boolean;
+        constructor(type: string, init?: { bubbles?: boolean }) {
+          this.type = type;
+          this.bubbles = init?.bubbles ?? false;
+        }
+      };
       try {
         return capturedFn(capturedSel, capturedTok);
       } finally {
@@ -51,6 +69,11 @@ function makeCallbackCapturePage(): {
           g["document"] = prevDocument;
         } else {
           delete g["document"];
+        }
+        if (hadEvent) {
+          g["Event"] = prevEvent;
+        } else {
+          delete g["Event"];
         }
       }
     },
@@ -107,6 +130,55 @@ describe("injectToken", () => {
       const result = runCallback({ querySelector: () => el });
       expect(result).toBe(true);
       expect(el.innerText).toBe("MY_TOKEN");
+    });
+
+    it("sets .value and dispatches input+change for a hidden <input> (Turnstile), NOT innerText", async () => {
+      const { page, runCallback } = makeCallbackCapturePage();
+      await injectToken(page, "[name=cf-turnstile-response]", "CF_TOKEN");
+      const events: string[] = [];
+      const el = {
+        tagName: "INPUT",
+        value: "",
+        innerText: "",
+        dispatchEvent: (e: { type: string }) => {
+          events.push(e.type);
+          return true;
+        },
+      };
+      const result = runCallback({ querySelector: () => el });
+      expect(result).toBe(true);
+      expect(el.value).toBe("CF_TOKEN"); // the field that actually submits
+      expect(el.innerText).toBe(""); // innerText must NOT be used for inputs
+      expect(events).toEqual(["input", "change"]);
+    });
+
+    it("sets .value for a <textarea> (reCAPTCHA response field)", async () => {
+      const { page, runCallback } = makeCallbackCapturePage();
+      await injectToken(page, "#g-recaptcha-response", "G_TOKEN");
+      const events: string[] = [];
+      const el = {
+        tagName: "TEXTAREA",
+        value: "",
+        innerText: "",
+        dispatchEvent: (e: { type: string }) => {
+          events.push(e.type);
+          return true;
+        },
+      };
+      const result = runCallback({ querySelector: () => el });
+      expect(result).toBe(true);
+      expect(el.value).toBe("G_TOKEN");
+      expect(events).toEqual(["input", "change"]);
+    });
+
+    it("falls back to innerText for a non-form element (<div>)", async () => {
+      const { page, runCallback } = makeCallbackCapturePage();
+      await injectToken(page, "#custom-widget", "DIV_TOKEN");
+      const el = { tagName: "DIV", value: "", innerText: "" };
+      const result = runCallback({ querySelector: () => el });
+      expect(result).toBe(true);
+      expect(el.innerText).toBe("DIV_TOKEN");
+      expect(el.value).toBe(""); // value untouched for non-form elements
     });
   });
 });

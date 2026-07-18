@@ -33,6 +33,36 @@ describe("throttle", () => {
       cause: expect.objectContaining({ message: "CDP closed" }),
     });
   });
+
+  it("reuses one CDP session across repeated throttle()/setOffline() calls (no leak)", async () => {
+    const { page, target } = pageMock();
+    await throttle(page, THROTTLE_PROFILES.SLOW_3G);
+    await throttle(page, THROTTLE_PROFILES.FAST_3G);
+    await setOffline(page, true);
+    await setOffline(page, false);
+    // one attach for the whole page lifetime, not four
+    expect(target.createCDPSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("evicts the cached session on failure so a retry re-attaches instead of reusing the dead session", async () => {
+    const send = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("CDP closed"))
+      .mockResolvedValueOnce(undefined);
+    const session = { send } as unknown as CDPSession;
+    const target = { createCDPSession: vi.fn().mockResolvedValue(session) };
+    const page = { target: () => target } as unknown as Page;
+
+    await expect(throttle(page, THROTTLE_PROFILES.SLOW_3G)).rejects.toMatchObject({
+      name: "PptrKitError",
+      retryable: true,
+    });
+    expect(target.createCDPSession).toHaveBeenCalledTimes(1);
+
+    await throttle(page, THROTTLE_PROFILES.FAST_3G);
+    // the failed session was evicted, so the retry re-created a fresh one
+    expect(target.createCDPSession).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("setOffline", () => {

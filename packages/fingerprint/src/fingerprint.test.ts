@@ -153,7 +153,29 @@ describe("applyFingerprint", () => {
     });
   });
 
-  it("overrides in-page navigator.language and languages via evaluateOnNewDocument", async () => {
+  it("unions in the primary sub-tag for a hyphenated locale with no profile entry", async () => {
+    const page = mockPage();
+    const fp: Fingerprint = {
+      userAgent: "UA/1.0",
+      viewport: { width: 1920, height: 1080 },
+      locale: "es-MX",
+      timezoneId: "America/Mexico_City",
+    };
+    await applyFingerprint(page, fp);
+    // ACCEPT_LANGUAGE has no entry for "es-MX", so header falls back to the locale itself...
+    expect(page.setExtraHTTPHeaders).toHaveBeenCalledWith({
+      "Accept-Language": "es-MX",
+    });
+    // ...but navigator.languages must still union in the primary sub-tag "es",
+    // matching the old-code fallback behavior for any pinned locale outside the profiles.
+    expect(page.evaluateOnNewDocument).toHaveBeenCalledWith(
+      expect.any(Function),
+      "es-MX",
+      ["es-MX", "es"],
+    );
+  });
+
+  it("overrides in-page navigator.language and languages coherently with the Accept-Language header", async () => {
     const page = mockPage();
     const fp: Fingerprint = {
       userAgent: "X Chrome/144.0.0.0 Y",
@@ -162,10 +184,14 @@ describe("applyFingerprint", () => {
       timezoneId: "Europe/Berlin",
     };
     await applyFingerprint(page, fp);
+    // header is "de-DE,de;q=0.9,en;q=0.8" → languages must advertise the same en fallback
+    expect(page.setExtraHTTPHeaders).toHaveBeenCalledWith({
+      "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+    });
     expect(page.evaluateOnNewDocument).toHaveBeenCalledWith(
       expect.any(Function),
       "de-DE",
-      ["de-DE", "de"],
+      ["de-DE", "de", "en"],
     );
   });
 });

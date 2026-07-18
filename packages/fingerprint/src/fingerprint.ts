@@ -40,6 +40,18 @@ const ACCEPT_LANGUAGE: Record<string, string> = Object.fromEntries(
   PROFILES.map((p) => [p.locale, p.acceptLanguage]),
 );
 
+/**
+ * Turn an Accept-Language header into the ordered language list Chrome exposes
+ * as `navigator.languages`: split on comma, drop the `;q=` weight, trim.
+ * e.g. "de-DE,de;q=0.9,en;q=0.8" → ["de-DE","de","en"].
+ */
+function languagesFromAcceptLanguage(header: string): string[] {
+  return header
+    .split(",")
+    .map((tok) => tok.split(";")[0]!.trim())
+    .filter((t) => t.length > 0);
+}
+
 /** Random number source in [0, 1). Override for deterministic tests. */
 export type RandomFn = () => number;
 
@@ -86,8 +98,10 @@ async function reconcileUserAgent(page: Page, ua: string): Promise<string> {
 /**
  * Apply a fingerprint to a page: UA (object form, version reconciled to the
  * live browser), viewport, timezone, the `Accept-Language` request header, and
- * an in-page override of `navigator.language`/`navigator.languages` so JS-level
- * reads agree with the header/locale.
+ * an in-page override of `navigator.language`/`navigator.languages`.
+ * `navigator.languages` is derived from the same `Accept-Language` header's
+ * token list (q-values stripped), so the in-page JS reads always agree with
+ * the header — they can never disagree.
  *
  * The UA's `Chrome/<version>` token is rewritten to match `page.browser()
  * .version()` — so the spoofed UA tracks whatever Chrome is actually running
@@ -109,12 +123,18 @@ export async function applyFingerprint(
   await page.setUserAgent({ userAgent });
   await page.setViewport(fp.viewport);
   await page.emulateTimezone(fp.timezoneId);
-  await page.setExtraHTTPHeaders({
-    "Accept-Language": ACCEPT_LANGUAGE[fp.locale] ?? fp.locale,
-  });
-  const parts = fp.locale.split("-");
-  const primary = parts.length > 1 ? parts[0] : undefined;
-  const languages = primary ? [fp.locale, primary] : [fp.locale];
+  const profileAcceptLanguage = ACCEPT_LANGUAGE[fp.locale];
+  const acceptLanguage = profileAcceptLanguage ?? fp.locale;
+  await page.setExtraHTTPHeaders({ "Accept-Language": acceptLanguage });
+  // For a pinned locale with a profile entry, navigator.languages is derived
+  // from the header's token list so the two can never disagree. For a locale
+  // outside the profiles (no Accept-Language entry), the header is just the
+  // raw locale string (no commas) — so fall back to unioning in the primary
+  // subtag directly, same as the old behavior, instead of collapsing to a
+  // single-element list for hyphenated locales like "es-MX".
+  const languages = profileAcceptLanguage
+    ? languagesFromAcceptLanguage(profileAcceptLanguage)
+    : [fp.locale, ...(fp.locale.includes("-") ? [fp.locale.split("-")[0]!] : [])];
   await page.evaluateOnNewDocument(
     (locale: string, langs: string[]) => {
       /* v8 ignore next 11 -- in-page evaluateOnNewDocument callback; covered by tests/integration fingerprint test */

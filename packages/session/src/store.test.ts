@@ -48,6 +48,7 @@ describe("Session store", () => {
       cookies: [],
       localStorage: {},
       sessionStorage: {},
+      origin: "https://example.com",
       capturedAt: new Date().toISOString(),
     };
 

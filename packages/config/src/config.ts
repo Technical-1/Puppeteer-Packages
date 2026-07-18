@@ -1,6 +1,6 @@
 import { PptrKitError } from "@technical-1/core";
 
-export interface ConfigField<V> {
+export interface ConfigField<V = string> {
   /** Environment variable name to read. */
   env: string;
   /** Value used when the env var is absent OR set to an empty string. */
@@ -17,22 +17,44 @@ export interface ConfigField<V> {
   required?: boolean;
 }
 
+/**
+ * Back-compat alias. `loadConfig` now infers the schema literal directly, but
+ * this type is still re-exported for callers that name their schema shape.
+ */
 export type ConfigSchema<T> = { [K in keyof T]: ConfigField<T[K]> };
+
+/** The value type a single field resolves to. */
+type FieldValue<F> = F extends ConfigField<infer V> ? V : never;
+
+/**
+ * The object `loadConfig` returns for a given schema literal `S`. A field that
+ * is `required:true` or carries a `default` is guaranteed present; a field with
+ * neither surfaces as `V | undefined`, because at runtime it resolves to the
+ * (absent) default.
+ */
+export type ResolvedConfig<S extends Record<string, ConfigField<unknown>>> = {
+  [K in keyof S]: S[K] extends { required: true }
+    ? FieldValue<S[K]>
+    : S[K] extends { default: unknown }
+      ? FieldValue<S[K]>
+      : FieldValue<S[K]> | undefined;
+};
 
 /**
  * Resolve a typed config object from a schema. Reads `env` (defaults to
  * `process.env`). An env var that is unset OR an empty string is treated as
  * absent. A missing required field with no `default` throws a core
  * `PptrKitError` whose `context` carries the offending env var NAME (never
- * its value — no secret leakage).
+ * its value — no secret leakage). Optional fields with no default surface as
+ * `V | undefined` in the return type.
  */
-export function loadConfig<T>(
-  schema: ConfigSchema<T>,
+export function loadConfig<S extends Record<string, ConfigField<unknown>>>(
+  schema: S,
   env: Record<string, string | undefined> = process.env,
-): T {
-  const out: Partial<T> = {};
-  for (const key of Object.keys(schema) as (keyof T)[]) {
-    const field = schema[key];
+): ResolvedConfig<S> {
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(schema)) {
+    const field = schema[key] as ConfigField<unknown>;
     const raw = env[field.env];
     const missing = raw === undefined || raw === "";
     if (missing) {
@@ -41,13 +63,10 @@ export function loadConfig<T>(
           context: { env: field.env },
         });
       }
-      out[key] = field.default as T[keyof T];
+      out[key] = field.default;
     } else {
-      out[key] = (field.parse ? field.parse(raw) : raw) as T[keyof T];
+      out[key] = field.parse ? field.parse(raw) : raw;
     }
   }
-  // Single assertion: the loader trusts the caller's schema to cover every
-  // non-optional key of T (via a default or a present/required env var).
-  // Localizing the cast here keeps the type-contract boundary in one place.
-  return out as T;
+  return out as ResolvedConfig<S>;
 }

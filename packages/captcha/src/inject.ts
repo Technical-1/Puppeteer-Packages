@@ -4,12 +4,23 @@ import type { Page } from "puppeteer-core";
 // In-page globals referenced inside the evaluate callback. Module-scoped
 // declarations keep the package Node-only (no DOM lib) per the cemented
 // convention.
-declare var document: { querySelector(s: string): { innerText: string } | null };
+interface InPageElement {
+  tagName?: string;
+  value?: string;
+  innerText?: string;
+  dispatchEvent(evt: unknown): boolean;
+}
+declare var document: { querySelector(s: string): InPageElement | null };
+declare var Event: { new (type: string, init?: { bubbles?: boolean }): unknown };
 
 /**
- * Inject a solved-captcha token into the element matching `selector` by
- * setting its `innerText`. Works for the standard hidden-textarea pattern
- * (e.g. `#g-recaptcha-response`, `[name="cf-turnstile-response"]`).
+ * Inject a solved-captcha token into the element matching `selector`. For
+ * `<input>`/`<textarea>` fields (the elements that actually submit) this sets
+ * `.value` and dispatches `input`+`change` events so framework listeners
+ * observe it; for other elements it falls back to setting `innerText`. This
+ * covers both the standard hidden-textarea pattern (e.g.
+ * `#g-recaptcha-response`) and Cloudflare Turnstile's hidden
+ * `<input name="cf-turnstile-response">`.
  *
  * Throws `CaptchaError` (`retryable:false`):
  *   - if the selector does not match an element (programmer error)
@@ -31,7 +42,17 @@ export async function injectToken(
       (sel: string, tok: string): boolean => {
         const el = document.querySelector(sel);
         if (el === null) return false;
-        el.innerText = tok;
+        const tag = el.tagName ? el.tagName.toLowerCase() : "";
+        if (tag === "input" || tag === "textarea") {
+          // Form fields submit their .value, not their text content. Set
+          // value and fire input+change so framework listeners (React/Vue)
+          // observe it.
+          el.value = tok;
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+        } else {
+          el.innerText = tok;
+        }
         return true;
       },
       selector,

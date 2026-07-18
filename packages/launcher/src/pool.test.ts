@@ -270,3 +270,39 @@ describe("BrowserPool", () => {
     await pool.drain();
   });
 });
+
+describe("BrowserPool size validation", () => {
+  const puppeteer = { launch: vi.fn() };
+  const opts = { executablePath: "/c" };
+
+  it("throws a terminal PptrKitError for size: 0", () => {
+    try {
+      new BrowserPool(puppeteer as never, opts, { size: 0 });
+      throw new Error("expected constructor to throw");
+    } catch (err) {
+      expect(err).toMatchObject({ name: "PptrKitError", retryable: false });
+      expect((err as { context: { size: number } }).context.size).toBe(0);
+    }
+    expect(puppeteer.launch).not.toHaveBeenCalled();
+  });
+
+  it("throws for a negative size", () => {
+    expect(() => new BrowserPool(puppeteer as never, opts, { size: -2 })).toThrow(
+      /positive integer/,
+    );
+  });
+
+  it("throws for a non-integer / NaN size", () => {
+    expect(() => new BrowserPool(puppeteer as never, opts, { size: 1.5 })).toThrow(
+      /positive integer/,
+    );
+    expect(() => new BrowserPool(puppeteer as never, opts, { size: NaN })).toThrow(
+      /positive integer/,
+    );
+  });
+
+  it("still accepts a valid positive integer size", () => {
+    expect(() => new BrowserPool(puppeteer as never, opts, { size: 3 })).not.toThrow();
+    expect(() => new BrowserPool(puppeteer as never, opts, {})).not.toThrow(); // defaults to 1
+  });
+});
