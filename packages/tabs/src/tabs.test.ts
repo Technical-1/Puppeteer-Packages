@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import type { Browser, Page, Target } from "puppeteer-core";
-import { waitForNewPage } from "./tabs.js";
+import { waitForNewPage, waitForPageMatching } from "./tabs.js";
 
 /** A Browser fake with a real listener registry so we can emit targets. */
 function mockBrowser(): Browser & { emit: (event: string, target: Target) => void } {
@@ -158,5 +158,75 @@ describe("waitForNewPage", () => {
     );
     expect(log).toHaveBeenCalledWith("waiting for new page/tab", "step");
     expect(log).toHaveBeenCalledWith("new page/tab settled", "success");
+  });
+});
+
+describe("waitForPageMatching", () => {
+  it("resolves only when the target URL satisfies the predicate", async () => {
+    const browser = mockBrowser();
+    const page = mockPage();
+    const wrong = mockTarget({ url: () => "https://ads.test/", page: vi.fn() });
+    const right = mockTarget({ url: () => "https://checkout.test/pay", page: vi.fn().mockResolvedValue(page) });
+    const p = waitForPageMatching(browser, () => {}, (url) => url.includes("checkout.test"));
+    browser.emit("targetcreated", wrong);
+    browser.emit("targetcreated", right);
+    expect(await p).toBe(page);
+    expect(wrong.page).not.toHaveBeenCalled(); // non-matching target never resolved
+  });
+
+  it("ignores non-page targets even if some url() would match", async () => {
+    const browser = mockBrowser();
+    const page = mockPage();
+    const worker = mockTarget({ type: () => "service_worker", url: () => "https://checkout.test/x", page: vi.fn() });
+    const pageTarget = mockTarget({ url: () => "https://checkout.test/pay", page: vi.fn().mockResolvedValue(page) });
+    const p = waitForPageMatching(browser, () => {}, (url) => url.includes("checkout.test"));
+    browser.emit("targetcreated", worker);
+    browser.emit("targetcreated", pageTarget);
+    expect(await p).toBe(page);
+    expect(worker.page).not.toHaveBeenCalled();
+  });
+
+  it("throws a retryable TimeoutError when no page URL matches in time", async () => {
+    vi.useFakeTimers();
+    const browser = mockBrowser();
+    const p = waitForPageMatching(browser, () => {}, () => false, { timeout: 500 }).catch((e: unknown) => e);
+    browser.emit("targetcreated", mockTarget({ url: () => "https://nope.test/" }));
+    await vi.advanceTimersByTimeAsync(500);
+    const err = await p;
+    expect(err).toMatchObject({ name: "TimeoutError", retryable: true });
+    expect((err as { context: { timeout: number } }).context.timeout).toBe(500);
+  });
+
+  it("skips a target whose url() throws and settles on the next matching page", async () => {
+    const browser = mockBrowser();
+    const page = mockPage();
+    const bad = mockTarget({
+      url: () => {
+        throw new Error("detached target url");
+      },
+      page: vi.fn(),
+    });
+    const good = mockTarget({ url: () => "https://checkout.test/pay", page: vi.fn().mockResolvedValue(page) });
+    const p = waitForPageMatching(browser, () => {}, (url) => url.includes("checkout.test"));
+    browser.emit("targetcreated", bad);
+    browser.emit("targetcreated", good);
+    expect(await p).toBe(page);
+    expect(bad.page).not.toHaveBeenCalled();
+  });
+
+  it("logs a step line on entry and a success line on settle", async () => {
+    const log = vi.fn();
+    const browser = mockBrowser();
+    const target = mockTarget({ url: () => "https://checkout.test/pay" });
+    await waitForPageMatching(
+      browser,
+      () => {
+        browser.emit("targetcreated", target);
+      },
+      (url) => url.includes("checkout.test"),
+      { logger: { log } },
+    );
+    expect(log).toHaveBeenCalledWith("waiting for matching new page/tab", "step");
+    expect(log).toHaveBeenCalledWith("matching page/tab settled", "success");
   });
 });

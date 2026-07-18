@@ -107,3 +107,30 @@ export async function waitForNewPage(
   opts.logger?.log("new page/tab settled", "success");
   return page;
 }
+
+export interface WaitForPageMatchingOptions extends WaitForNewPageOptions {}
+
+/**
+ * Like {@link waitForNewPage}, but resolves only the first new page target
+ * whose target URL satisfies `urlPredicate`. Non-matching page targets (e.g. an
+ * ad/analytics popup) are ignored until one matches or the timeout fires. A
+ * `urlPredicate` or `target.url()` that throws simply skips that target.
+ */
+export async function waitForPageMatching(
+  browser: Browser,
+  trigger: () => Promise<void> | void,
+  urlPredicate: (url: string) => boolean,
+  opts: WaitForPageMatchingOptions = {},
+): Promise<Page> {
+  const timeout = opts.timeout ?? DEFAULT_TIMEOUT_MS;
+  opts.logger?.log("waiting for matching new page/tab", "step");
+  const page = await awaitNewPage(
+    browser,
+    trigger,
+    (target) => target.type() === "page" && urlPredicate(target.url()),
+    timeout,
+    "waitForPageMatching",
+  );
+  opts.logger?.log("matching page/tab settled", "success");
+  return page;
+}
