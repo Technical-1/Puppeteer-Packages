@@ -1,5 +1,7 @@
 # @technical-1 Puppeteer Suite
 
+[![CI](https://github.com/Technical-1/Puppeteer-Packages/actions/workflows/ci.yml/badge.svg)](https://github.com/Technical-1/Puppeteer-Packages/actions/workflows/ci.yml)
+
 A monorepo of small, focused, independently-versioned npm packages for browser automation with [`puppeteer-core`](https://pptr.dev/). Each package does one thing — launch a pooled browser, navigate with retries, extract data, apply stealth, capture a screenshot or PDF, solve a captcha — and they compose cleanly because they share one tiny `core` of types, a typed error hierarchy, and a dependency-injected `Logger` contract.
 
 I built this to turn a pile of copy-pasted Puppeteer helpers into a real library: tree-shakeable packages you install à la carte, with `puppeteer-core` as a peer dependency (never bundled), dual ESM + CJS output, and ~100% tested logic.
