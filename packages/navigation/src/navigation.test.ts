@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { AbortError } from "@technical-1/core";
 import { goto, waitForNetworkIdle, navigateOnGesture } from "./navigation.js";
 import type { Page, HTTPResponse } from "puppeteer-core";
 
@@ -99,11 +100,12 @@ describe("goto", () => {
 
     // The intentional cancellation must pass through untouched, NOT become a
     // retryable NavigationError that an outer retry policy would re-attempt.
-    expect(err).toBeInstanceOf(Error);
-    expect((err as Error).name).toBe("Error");
+    // withRetry now throws the discriminable core AbortError (retryable:false).
+    expect(err).toBeInstanceOf(AbortError);
+    expect((err as Error).name).toBe("AbortError");
     expect((err as Error).message).toMatch(/abort/i);
     expect(err).not.toMatchObject({ name: "NavigationError" });
-    expect((err as { retryable?: unknown }).retryable).toBeUndefined();
+    expect((err as { retryable?: unknown }).retryable).toBe(false);
     expect(gotoMock).not.toHaveBeenCalled(); // aborted before any attempt
   });
 
@@ -207,7 +209,9 @@ describe("navigateOnGesture", () => {
     const err = await navigateOnGesture(page, () => {}, {
       retry: { signal: ac.signal, retries: 3, minDelayMs: 0, jitter: false },
     }).catch((e: unknown) => e);
-    expect((err as Error).name).toBe("Error");
+    expect(err).toBeInstanceOf(AbortError);
+    expect((err as Error).name).toBe("AbortError");
+    expect((err as { retryable?: unknown }).retryable).toBe(false);
     expect(err).not.toMatchObject({ name: "NavigationError" });
     expect(wfn).not.toHaveBeenCalled();
   });

@@ -1,7 +1,7 @@
 import type { Page, HTTPResponse } from "puppeteer-core";
 import { withRetry, type RetryOptions } from "@technical-1/retry";
-import { NavigationError, TimeoutError } from "@technical-1/core";
-import type { LoggerOption } from "@technical-1/core";
+import { NavigationError, TimeoutError, AbortError } from "@technical-1/core";
+import type { LoggerOption, Logger, ErrorContext } from "@technical-1/core";
 
 export type WaitUntil =
   | "load"
@@ -34,6 +34,45 @@ export interface GotoOptions extends LoggerOption {
  * will re-attempt (outer × inner total attempts) — pass a terminal outer
  * policy if that is not desired.
  */
+/**
+ * Shared control flow for goto/navigateOnGesture: run `fn` under `withRetry`
+ * (every fn failure is retryable — the retry policy governs attempts), pass a
+ * caller-cancellation through untouched so an outer retry policy never
+ * re-attempts a navigation the caller cancelled, and wrap any other surviving
+ * failure as a retryable `NavigationError`.
+ *
+ * Abort detection keys off the error's OWN identity — `err instanceof
+ * AbortError`, the discriminable core error `withRetry` throws when the
+ * signal is aborted (Task 6) — not the current signal state. That identity
+ * check is why a genuine retry-exhausted failure that merely races with an
+ * unrelated signal abort still wraps as `NavigationError`: withRetry's
+ * retry-exhaustion path rethrows the real `fn()` failure as-is (not an
+ * `AbortError`), so it fails the guard and gets wrapped, exactly as intended.
+ */
+async function runNavigation(
+  fn: (attempt: number) => Promise<HTTPResponse | null>,
+  opts: {
+    errorUrl: string;
+    context: ErrorContext;
+    retry?: RetryOptions;
+    logger?: Logger;
+  },
+): Promise<HTTPResponse | null> {
+  try {
+    return await withRetry(fn, {
+      logger: opts.logger,
+      isRetryable: () => true,
+      ...opts.retry,
+    });
+  } catch (err) {
+    if (err instanceof AbortError) throw err;
+    throw new NavigationError(opts.errorUrl, {
+      cause: err,
+      context: opts.context,
+    });
+  }
+}
+
 export async function goto(
   page: Page,
   url: string,
@@ -42,41 +81,15 @@ export async function goto(
   const waitUntil = opts.waitUntil ?? "load";
   const timeout = opts.timeout ?? 30000;
   opts.logger?.log(`navigating to ${url}`, "step");
-  let response: HTTPResponse | null = null;
-  try {
-    response = await withRetry(
-      async () => page.goto(url, { waitUntil, timeout }),
-      {
-        logger: opts.logger,
-        isRetryable: () => true,
-        ...opts.retry,
-      },
-    );
-  } catch (err) {
-    // A caller-cancelled navigation (aborted retry.signal) surfaces from
-    // withRetry as a plain Error("Aborted…"). Do NOT rewrap it as a retryable
-    // NavigationError — that would let an outer retry policy re-attempt a
-    // navigation the caller explicitly cancelled. Pass the abort through as-is
-    // (terminal: a plain Error carries no `retryable`, so the suite property
-    // contract reads it as non-retryable).
-    //
-    // Detection must be based on the ERROR'S PROVENANCE, not just current
-    // signal state: checking only `opts.retry?.signal?.aborted` admits a race
-    // where a caller aborts the signal for an unrelated reason at the same
-    // moment withRetry throws a genuine, retry-exhausted `fn()` failure (which
-    // withRetry rethrows as-is without consulting the signal). In that race, a
-    // state-only check would misclassify the genuine failure as a terminal
-    // abort instead of wrapping it as a retryable NavigationError. Match on
-    // the exact message shapes withRetry uses for abort ("Aborted before
-    // first attempt" / "Aborted" during backoff), requiring the signal to
-    // also be aborted as a belt-and-suspenders check.
-    const isAbortError =
-      err instanceof Error &&
-      err.message.startsWith("Aborted") &&
-      opts.retry?.signal?.aborted === true;
-    if (isAbortError) throw err;
-    throw new NavigationError(url, { cause: err, context: { url, waitUntil } });
-  }
+  const response = await runNavigation(
+    async () => page.goto(url, { waitUntil, timeout }),
+    {
+      errorUrl: url,
+      context: { url, waitUntil },
+      retry: opts.retry,
+      logger: opts.logger,
+    },
+  );
   opts.logger?.log(`loaded ${url}`, "success");
   return response;
 }
@@ -111,38 +124,21 @@ export async function navigateOnGesture(
   const timeout = opts.timeout ?? 30000;
   const from = page.url();
   opts.logger?.log(`awaiting gesture navigation from ${from}`, "step");
-  let response: HTTPResponse | null = null;
-  try {
-    response = await withRetry(
-      async () => {
-        const [res] = await Promise.all([
-          page.waitForNavigation({ waitUntil, timeout }),
-          gesture(),
-        ]);
-        return res;
-      },
-      {
-        logger: opts.logger,
-        isRetryable: () => true,
-        ...opts.retry,
-      },
-    );
-  } catch (err) {
-    // Same provenance-based abort guard as `goto` (see the comment there):
-    // match on the exact message shapes withRetry uses for abort, requiring
-    // the signal to also be aborted, so a genuine retry-exhausted failure
-    // that races with an unrelated signal abort still wraps as a retryable
-    // NavigationError instead of being misclassified as a terminal abort.
-    const isAbortError =
-      err instanceof Error &&
-      err.message.startsWith("Aborted") &&
-      opts.retry?.signal?.aborted === true;
-    if (isAbortError) throw err;
-    throw new NavigationError(from, {
-      cause: err,
+  const response = await runNavigation(
+    async () => {
+      const [res] = await Promise.all([
+        page.waitForNavigation({ waitUntil, timeout }),
+        gesture(),
+      ]);
+      return res;
+    },
+    {
+      errorUrl: from,
       context: { from, waitUntil },
-    });
-  }
+      retry: opts.retry,
+      logger: opts.logger,
+    },
+  );
   opts.logger?.log(`gesture navigation settled from ${from}`, "success");
   return response;
 }
