@@ -7,6 +7,7 @@ import type { LoggerOption, TimeoutOption } from "@technical-1/core";
 // We declare only what we actually use to avoid importing the full DOM lib.
 declare var document: {
   querySelector(s: string): { textContent: string | null } | null;
+  querySelectorAll(s: string): { length: number };
   body: { scrollHeight: number };
 };
 declare var window: {
@@ -18,6 +19,9 @@ declare var window: {
 export type PageOrFrame = Page | Frame;
 
 export const DEFAULT_TIMEOUT = 15000;
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 export interface InteractionOptions extends LoggerOption, TimeoutOption {}
 
@@ -100,4 +104,53 @@ export async function scroll(
     if (typeof by === "number") window.scrollBy(0, by);
     else window.scrollTo(0, document.body.scrollHeight);
   }, opts.by);
+}
+
+export interface AutoScrollOptions extends LoggerOption {
+  /** Max scroll iterations before giving up. Default 30. */
+  maxScrolls?: number;
+  /** Pixels to scroll per step; default jumps to the bottom each step. */
+  step?: number;
+  /** Wait after each scroll for lazy content to render (ms). Default 500. */
+  settleMs?: number;
+  /**
+   * CSS selector of the repeated item. When given, the loop stops once the
+   * matched-item count stops growing; otherwise it stops on stable page height.
+   */
+  itemSelector?: string;
+}
+
+/**
+ * Scroll repeatedly until lazy-loaded content stops growing (or `maxScrolls` is
+ * reached), waiting `settleMs` after each scroll for new content to render.
+ * Returns the number of scroll iterations performed.
+ */
+export async function autoScroll(
+  page: PageOrFrame,
+  opts: AutoScrollOptions = {},
+): Promise<number> {
+  const maxScrolls = opts.maxScrolls ?? 30;
+  const settleMs = opts.settleMs ?? 500;
+  opts.logger?.log(`autoScroll (max ${maxScrolls})`, "step");
+
+  let previous = -1;
+  let scrolls = 0;
+  for (let i = 0; i < maxScrolls; i++) {
+    const metric = await page.evaluate(
+      (args: { by?: number; sel?: string }) => {
+        /* v8 ignore next 6 -- runs in-browser inside Chromium; covered by the integration tier */
+        if (typeof args.by === "number") window.scrollBy(0, args.by);
+        else window.scrollTo(0, document.body.scrollHeight);
+        return args.sel
+          ? document.querySelectorAll(args.sel).length
+          : document.body.scrollHeight;
+      },
+      { by: opts.step, sel: opts.itemSelector },
+    );
+    scrolls++;
+    if (metric === previous) break;
+    previous = metric;
+    if (settleMs > 0) await sleep(settleMs);
+  }
+  return scrolls;
 }

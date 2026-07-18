@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { safeClick, safeType, waitAndGet, scroll } from "./helpers.js";
+import { safeClick, safeType, waitAndGet, scroll, autoScroll } from "./helpers.js";
 import { SelectorNotFoundError } from "@technical-1/core";
 import type { Page, Frame } from "puppeteer-core";
 
@@ -181,6 +181,68 @@ describe("scroll", () => {
     const logger = { log: vi.fn() };
     await scroll(mockPage(), { by: 400, logger });
     expect(logger.log).toHaveBeenCalledWith("scroll by 400", "step");
+  });
+});
+
+describe("autoScroll", () => {
+  it("scrolls until the page height stops growing and returns the scroll count", async () => {
+    const evaluate = vi
+      .fn()
+      .mockResolvedValueOnce(1000)
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(2000);
+    const page = mockPage({ evaluate });
+    const count = await autoScroll(page, { settleMs: 0 });
+    expect(count).toBe(3);
+    expect(evaluate).toHaveBeenCalledTimes(3);
+  });
+
+  it("stops at maxScrolls even when content keeps growing", async () => {
+    let h = 0;
+    const evaluate = vi.fn().mockImplementation(async () => (h += 100));
+    const page = mockPage({ evaluate });
+    const count = await autoScroll(page, { maxScrolls: 5, settleMs: 0 });
+    expect(count).toBe(5);
+    expect(evaluate).toHaveBeenCalledTimes(5);
+  });
+
+  it("passes step + itemSelector through and logs a step line", async () => {
+    const evaluate = vi
+      .fn()
+      .mockResolvedValueOnce(5)
+      .mockResolvedValueOnce(5);
+    const logger = { log: vi.fn() };
+    const page = mockPage({ evaluate });
+    await autoScroll(page, {
+      settleMs: 0,
+      step: 300,
+      itemSelector: ".card",
+      logger,
+    });
+    expect(logger.log).toHaveBeenCalledWith("autoScroll (max 30)", "step");
+    expect(evaluate).toHaveBeenCalledWith(expect.any(Function), {
+      by: 300,
+      sel: ".card",
+    });
+  });
+
+  it("waits settleMs between scrolls when positive (settle branch)", async () => {
+    vi.useFakeTimers();
+    const evaluate = vi
+      .fn()
+      .mockResolvedValueOnce(10)
+      .mockResolvedValueOnce(10);
+    const page = mockPage({ evaluate });
+    const p = autoScroll(page, { settleMs: 100 });
+    await vi.runAllTimersAsync();
+    expect(await p).toBe(2);
+    vi.useRealTimers();
+  });
+
+  it("works against a Frame", async () => {
+    const evaluate = vi.fn().mockResolvedValueOnce(1).mockResolvedValueOnce(1);
+    const frame = mockFrame({ evaluate });
+    expect(await autoScroll(frame, { settleMs: 0 })).toBe(2);
   });
 });
 
