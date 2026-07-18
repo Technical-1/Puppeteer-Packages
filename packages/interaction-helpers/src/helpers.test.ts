@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
-import { safeClick, safeType, waitAndGet, scroll } from "./helpers.js";
+import { safeClick, safeType, waitAndGet, scroll, autoScroll } from "./helpers.js";
 import { SelectorNotFoundError } from "@technical-1/core";
-import type { Page } from "puppeteer-core";
+import type { Page, Frame } from "puppeteer-core";
 
 function mockPage(overrides: Record<string, unknown> = {}): Page {
   return {
@@ -11,6 +11,16 @@ function mockPage(overrides: Record<string, unknown> = {}): Page {
     evaluate: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as Page;
+}
+
+function mockFrame(overrides: Record<string, unknown> = {}): Frame {
+  return {
+    waitForSelector: vi.fn().mockResolvedValue(true),
+    click: vi.fn().mockResolvedValue(undefined),
+    type: vi.fn().mockResolvedValue(undefined),
+    evaluate: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  } as unknown as Frame;
 }
 
 describe("safeClick", () => {
@@ -159,5 +169,142 @@ describe("scroll", () => {
     const page = mockPage();
     await scroll(page, { by: 500 });
     expect(page.evaluate).toHaveBeenCalledWith(expect.any(Function), 500);
+  });
+
+  it("logs 'scroll to bottom' at step level by default (Issue: ScrollOptions minor)", async () => {
+    const logger = { log: vi.fn() };
+    await scroll(mockPage(), { logger });
+    expect(logger.log).toHaveBeenCalledWith("scroll to bottom", "step");
+  });
+
+  it("logs the pixel amount when scrolling by a delta", async () => {
+    const logger = { log: vi.fn() };
+    await scroll(mockPage(), { by: 400, logger });
+    expect(logger.log).toHaveBeenCalledWith("scroll by 400", "step");
+  });
+});
+
+describe("autoScroll", () => {
+  it("scrolls until the page height stops growing and returns the scroll count", async () => {
+    const evaluate = vi
+      .fn()
+      .mockResolvedValueOnce(1000)
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(2000);
+    const page = mockPage({ evaluate });
+    const count = await autoScroll(page, { settleMs: 0 });
+    expect(count).toBe(3);
+    expect(evaluate).toHaveBeenCalledTimes(3);
+  });
+
+  it("stops at maxScrolls even when content keeps growing", async () => {
+    let h = 0;
+    const evaluate = vi.fn().mockImplementation(async () => (h += 100));
+    const page = mockPage({ evaluate });
+    const count = await autoScroll(page, { maxScrolls: 5, settleMs: 0 });
+    expect(count).toBe(5);
+    expect(evaluate).toHaveBeenCalledTimes(5);
+  });
+
+  it("passes step + itemSelector through and logs a step line", async () => {
+    const evaluate = vi
+      .fn()
+      .mockResolvedValueOnce(5)
+      .mockResolvedValueOnce(5);
+    const logger = { log: vi.fn() };
+    const page = mockPage({ evaluate });
+    await autoScroll(page, {
+      settleMs: 0,
+      step: 300,
+      itemSelector: ".card",
+      logger,
+    });
+    expect(logger.log).toHaveBeenCalledWith("autoScroll (max 30)", "step");
+    expect(evaluate).toHaveBeenCalledWith(expect.any(Function), {
+      by: 300,
+      sel: ".card",
+    });
+  });
+
+  it("waits settleMs between scrolls when positive (settle branch)", async () => {
+    vi.useFakeTimers();
+    const evaluate = vi
+      .fn()
+      .mockResolvedValueOnce(10)
+      .mockResolvedValueOnce(10);
+    const page = mockPage({ evaluate });
+    const p = autoScroll(page, { settleMs: 100 });
+    await vi.runAllTimersAsync();
+    expect(await p).toBe(2);
+    vi.useRealTimers();
+  });
+
+  it("works against a Frame", async () => {
+    const evaluate = vi.fn().mockResolvedValueOnce(1).mockResolvedValueOnce(1);
+    const frame = mockFrame({ evaluate });
+    expect(await autoScroll(frame, { settleMs: 0 })).toBe(2);
+  });
+
+  it("defaults to a 500ms settle wait when settleMs is omitted", async () => {
+    vi.useFakeTimers();
+    const evaluate = vi
+      .fn()
+      .mockResolvedValueOnce(10)
+      .mockResolvedValueOnce(20)
+      .mockResolvedValueOnce(20);
+    const page = mockPage({ evaluate });
+    // No settleMs in opts at all — exercises the `?? 500` fallback branch.
+    const p = autoScroll(page, {});
+
+    // First iteration's evaluate resolves, then it should be waiting on the
+    // settle sleep; before 500ms elapse the second scroll hasn't happened yet.
+    await vi.advanceTimersByTimeAsync(499);
+    expect(evaluate).toHaveBeenCalledTimes(1);
+
+    // Crossing the 500ms mark releases the sleep and the loop proceeds.
+    await vi.advanceTimersByTimeAsync(1);
+    expect(evaluate).toHaveBeenCalledTimes(2);
+
+    await vi.advanceTimersByTimeAsync(500);
+    expect(await p).toBe(3);
+    vi.useRealTimers();
+  });
+});
+
+describe("Page | Frame support", () => {
+  it("safeClick operates on a Frame", async () => {
+    const frame = mockFrame();
+    await safeClick(frame, "#btn");
+    expect(frame.waitForSelector).toHaveBeenCalledWith(
+      "#btn",
+      expect.objectContaining({ visible: true }),
+    );
+    expect(frame.click).toHaveBeenCalledWith("#btn");
+  });
+
+  it("safeType operates on a Frame", async () => {
+    const frame = mockFrame();
+    await safeType(frame, "#in", "abc");
+    expect(frame.type).toHaveBeenCalledWith("#in", "abc", { delay: 0 });
+  });
+
+  it("waitAndGet operates on a Frame", async () => {
+    const frame = mockFrame({ evaluate: vi.fn().mockResolvedValue("  hi  ") });
+    expect(await waitAndGet(frame, "#x")).toBe("hi");
+  });
+
+  it("scroll operates on a Frame", async () => {
+    const frame = mockFrame();
+    await scroll(frame);
+    expect(frame.evaluate).toHaveBeenCalledWith(expect.any(Function), undefined);
+  });
+
+  it("safeClick still throws SelectorNotFoundError against a Frame", async () => {
+    const frame = mockFrame({
+      waitForSelector: vi.fn().mockRejectedValue(new Error("timeout")),
+    });
+    await expect(safeClick(frame, "#missing")).rejects.toBeInstanceOf(
+      SelectorNotFoundError,
+    );
   });
 });
