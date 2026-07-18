@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { emulateDevice } from "./emulation.js";
+import { emulateDevice, listKnownDevices } from "./emulation.js";
 import { PptrKitError } from "@technical-1/core";
 import { KnownDevices } from "puppeteer-core";
 import type { Page } from "puppeteer-core";
@@ -136,5 +136,15 @@ describe("emulateDevice — KnownDevices preset", () => {
       retryable: true,
       cause: boom,
     });
+  });
+});
+
+describe("listKnownDevices", () => {
+  it("returns the installed puppeteer-core preset names, including a well-known one", () => {
+    const names = listKnownDevices();
+    expect(Array.isArray(names)).toBe(true);
+    expect(names.length).toBeGreaterThan(0);
+    expect(names).toContain("iPhone 15 Pro");
+    expect(names).toEqual(Object.keys(KnownDevices));
   });
 });

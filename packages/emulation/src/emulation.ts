@@ -96,3 +96,8 @@ export async function emulateDevice(
   }
   logger?.log(`viewport set ${target.width}x${target.height}`, "success");
 }
+
+/** The device preset names available in the installed `puppeteer-core`. */
+export function listKnownDevices(): KnownDeviceName[] {
+  return Object.keys(KnownDevices) as KnownDeviceName[];
+}

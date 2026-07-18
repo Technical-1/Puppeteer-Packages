@@ -1,4 +1,4 @@
-export { emulateDevice } from "./emulation.js";
+export { emulateDevice, listKnownDevices } from "./emulation.js";
 export type {
   EmulateDeviceOptions,
   EmulationTarget,
