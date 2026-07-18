@@ -31,9 +31,11 @@ await setOffline(page, true);
 
 ## v1 limitations
 
-- `captureResponses` records `{url, status, method, resourceType, timestamp}`.
-  Does NOT capture headers or response bodies — full HAR-1.2 emission is the
-  v2 surface noted in spec §5.
+- `captureResponses` records `{url, status, method, resourceType, headers, fromCache,
+  timestamp}` for every response. Response bodies are opt-in and lazy: pass
+  `{ body: true }` (or `{ body: ["xhr","fetch"] }` to gate by resource type) and read
+  them via the per-record `buffer()` / `text()` / `json()` accessors. A body must be
+  awaited before the page navigates away — puppeteer discards it afterwards.
 - `throttle` uses CDP `Network.emulateNetworkConditions`. Does NOT throttle
   WebSocket / WebRTC (CDP limitation).
 - `blockResources` patterns are `ResourceType` strings (exact match) or
