@@ -59,7 +59,22 @@ export async function goto(
     // navigation the caller explicitly cancelled. Pass the abort through as-is
     // (terminal: a plain Error carries no `retryable`, so the suite property
     // contract reads it as non-retryable).
-    if (opts.retry?.signal?.aborted) throw err;
+    //
+    // Detection must be based on the ERROR'S PROVENANCE, not just current
+    // signal state: checking only `opts.retry?.signal?.aborted` admits a race
+    // where a caller aborts the signal for an unrelated reason at the same
+    // moment withRetry throws a genuine, retry-exhausted `fn()` failure (which
+    // withRetry rethrows as-is without consulting the signal). In that race, a
+    // state-only check would misclassify the genuine failure as a terminal
+    // abort instead of wrapping it as a retryable NavigationError. Match on
+    // the exact message shapes withRetry uses for abort ("Aborted before
+    // first attempt" / "Aborted" during backoff), requiring the signal to
+    // also be aborted as a belt-and-suspenders check.
+    const isAbortError =
+      err instanceof Error &&
+      err.message.startsWith("Aborted") &&
+      opts.retry?.signal?.aborted === true;
+    if (isAbortError) throw err;
     throw new NavigationError(url, { cause: err, context: { url, waitUntil } });
   }
   opts.logger?.log(`loaded ${url}`, "success");

@@ -106,6 +106,34 @@ describe("goto", () => {
     expect((err as { retryable?: unknown }).retryable).toBeUndefined();
     expect(gotoMock).not.toHaveBeenCalled(); // aborted before any attempt
   });
+
+  it("still wraps a genuine retry-exhausted failure as NavigationError even when signal.aborted is true (race: abort unrelated to the failure)", async () => {
+    // Race: the caller's signal happens to be aborted (e.g. for an unrelated
+    // reason) at the exact moment withRetry exhausts retries on a genuine
+    // navigation failure. withRetry's retry-exhaustion path does `throw err`
+    // (the real fn() failure) WITHOUT consulting the signal — so the thrown
+    // error here is "net::ERR_FAILED", never an "Aborted…" message. A
+    // state-based check (`signal.aborted` alone) would misclassify this as a
+    // terminal abort passthrough; the fix must key off the error's own
+    // provenance (its message) and only pass through true abort errors.
+    const ac = new AbortController();
+    const gotoMock = vi.fn().mockImplementation(() => {
+      // Simulate the abort landing concurrently with the genuine failure,
+      // after withRetry has already committed to rethrowing `err` as-is.
+      ac.abort();
+      return Promise.reject(new Error("net::ERR_FAILED"));
+    });
+    const page = mockPage({ goto: gotoMock });
+
+    const err = await goto(page, "https://x.test", {
+      retry: { signal: ac.signal, retries: 0, minDelayMs: 0, jitter: false },
+    }).catch((e: unknown) => e);
+
+    expect(ac.signal.aborted).toBe(true); // confirms the race condition held
+    expect(err).toMatchObject({ name: "NavigationError", retryable: true, url: "https://x.test" });
+    expect((err as { cause?: unknown }).cause).toBeInstanceOf(Error);
+    expect((err as { cause?: Error }).cause?.message).toBe("net::ERR_FAILED");
+  });
 });
 
 describe("waitForNetworkIdle", () => {
