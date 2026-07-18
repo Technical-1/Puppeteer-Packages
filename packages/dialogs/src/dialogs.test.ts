@@ -96,3 +96,43 @@ describe("handleDialogs — per-type policy", () => {
     expect(alert.dismiss).not.toHaveBeenCalled();
   });
 });
+
+describe("handleDialogs — prompt text", () => {
+  it("passes the per-rule promptText when accepting a prompt", async () => {
+    const { page, fire } = pageMock();
+    handleDialogs(page, {
+      policy: { prompt: { action: "accept", promptText: "hello" } },
+    });
+    const dialog = dialogMock({ type: "prompt" });
+
+    fire(dialog);
+    await flush();
+
+    expect(dialog.accept).toHaveBeenCalledWith("hello");
+  });
+
+  it("falls back to opts.promptText when the rule has none", async () => {
+    const { page, fire } = pageMock();
+    handleDialogs(page, {
+      defaultAction: "accept",
+      promptText: "fallback",
+    });
+    const dialog = dialogMock({ type: "prompt" });
+
+    fire(dialog);
+    await flush();
+
+    expect(dialog.accept).toHaveBeenCalledWith("fallback");
+  });
+
+  it("never passes promptText to a non-prompt dialog", async () => {
+    const { page, fire } = pageMock();
+    handleDialogs(page, { defaultAction: "accept", promptText: "nope" });
+    const dialog = dialogMock({ type: "confirm" });
+
+    fire(dialog);
+    await flush();
+
+    expect(dialog.accept).toHaveBeenCalledWith(undefined);
+  });
+});

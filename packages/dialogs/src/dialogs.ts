@@ -12,6 +12,8 @@ export interface HandleDialogsOptions extends LoggerOption {
   policy?: DialogPolicy;
   /** Action for any dialog kind not covered by `policy`. Default "dismiss". */
   defaultAction?: DialogDisposition;
+  /** Text entered when accepting a `prompt` and the rule supplies none. */
+  promptText?: string;
 }
 
 export interface DialogHandler {
@@ -40,8 +42,10 @@ export function handleDialogs(
     const type = dialog.type() as DialogKind;
     const rule = opts.policy?.[type];
     const action: DialogDisposition = rule?.action ?? defaultAction;
+    const promptText =
+      type === "prompt" ? rule?.promptText ?? opts.promptText : undefined;
     if (action === "accept") {
-      await dialog.accept(undefined);
+      await dialog.accept(promptText);
     } else {
       await dialog.dismiss();
     }
