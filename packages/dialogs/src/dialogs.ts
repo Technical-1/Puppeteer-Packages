@@ -1,4 +1,5 @@
 import type { Dialog, Page } from "puppeteer-core";
+import { PptrKitError } from "@technical-1/core";
 import type { LoggerOption } from "@technical-1/core";
 import type {
   DialogDisposition,
@@ -16,6 +17,8 @@ export interface HandleDialogsOptions extends LoggerOption {
   promptText?: string;
   /** Invoked after each dialog is successfully handled. */
   onDialog?: (event: DialogEvent) => void;
+  /** Invoked when responding to a dialog fails (e.g. page closed). */
+  onError?: (error: PptrKitError) => void;
 }
 
 export interface DialogHandler {
@@ -46,10 +49,20 @@ export function handleDialogs(
     const action: DialogDisposition = rule?.action ?? defaultAction;
     const promptText =
       type === "prompt" ? rule?.promptText ?? opts.promptText : undefined;
-    if (action === "accept") {
-      await dialog.accept(promptText);
-    } else {
-      await dialog.dismiss();
+    try {
+      if (action === "accept") {
+        await dialog.accept(promptText);
+      } else {
+        await dialog.dismiss();
+      }
+    } catch (cause) {
+      const error = new PptrKitError(
+        `dialogs: failed to ${action} ${type} dialog`,
+        { retryable: true, cause, context: { type, action } },
+      );
+      opts.logger?.log(error.message, "error");
+      opts.onError?.(error);
+      return;
     }
 
     const event: DialogEvent = {

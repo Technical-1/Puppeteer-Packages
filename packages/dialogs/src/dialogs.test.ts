@@ -195,3 +195,45 @@ describe("handleDialogs — typed events", () => {
     );
   });
 });
+
+describe("handleDialogs — response failure", () => {
+  it("surfaces a retryable PptrKitError via onError and logger, no handled entry", async () => {
+    const { page, fire } = pageMock();
+    const onError = vi.fn();
+    const onDialog = vi.fn();
+    const log = vi.fn();
+    const handler = handleDialogs(page, {
+      defaultAction: "accept",
+      onError,
+      onDialog,
+      logger: { log },
+    });
+    const dialog = {
+      type: vi.fn().mockReturnValue("confirm"),
+      message: vi.fn().mockReturnValue("boom"),
+      defaultValue: vi.fn().mockReturnValue(""),
+      accept: vi.fn().mockRejectedValue(new Error("page closed")),
+      dismiss: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Dialog;
+
+    fire(dialog);
+    await flush();
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    const err = onError.mock.calls[0]![0] as {
+      name: string;
+      retryable: boolean;
+      message: string;
+      cause?: unknown;
+      context: Record<string, unknown>;
+    };
+    expect(err.name).toBe("PptrKitError");
+    expect(err.retryable).toBe(true);
+    expect(err.message).toBe("dialogs: failed to accept confirm dialog");
+    expect(err.context).toEqual({ type: "confirm", action: "accept" });
+    expect((err.cause as Error).message).toBe("page closed");
+    expect(log).toHaveBeenCalledWith(err.message, "error");
+    expect(onDialog).not.toHaveBeenCalled();
+    expect(handler.handled).toEqual([]);
+  });
+});
