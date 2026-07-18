@@ -5,6 +5,11 @@ work with guaranteed cleanup, and pool browsers for concurrency.
 `puppeteer-core` is a **peer dependency** — you install and own its version;
 you pass your `puppeteer` instance in (this package imports only its types).
 
+> **ESM only.** This package ships ESM (`"type": "module"`). If you're in a
+> fresh `npm init -y` project (CommonJS by default), add `"type": "module"` to
+> your `package.json` — or use a `.mjs` file — before running the examples
+> below, or Node throws `SyntaxError: Cannot use import statement outside a module`.
+
 ```ts
 import puppeteer from "puppeteer-core";
 import { ensureChrome } from "@technical-1/chrome-setup";

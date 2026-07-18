@@ -7,6 +7,11 @@ Infrastructure errors (a `page.evaluate` rejection from frame detachment, naviga
 
 > **Convenience wrapper.** This package wraps puppeteer-core's `page.evaluate()` with small helpers for common text, table, and schema extraction patterns. It doesn't add new capability beyond `page.evaluate()` — it exists so the rest of `@technical-1/*` composes through one consistent, typed surface with predictable empty-collection semantics. If you only need DOM extraction, you can call `page.evaluate()` directly.
 
+> **ESM only.** This package ships ESM (`"type": "module"`). If you're in a
+> fresh `npm init -y` project (CommonJS by default), add `"type": "module"` to
+> your `package.json` — or use a `.mjs` file — before running the examples
+> below, or Node throws `SyntaxError: Cannot use import statement outside a module`.
+
 ```ts
 import { extractAll, extractTable, extractSchema } from "@technical-1/extract";
 
