@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/retry",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Generic backoff/retry wrappers keyed off the @technical-1/core retryable error contract",
   "license": "MIT",
   "repository": {

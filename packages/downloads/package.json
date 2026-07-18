@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/downloads",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Await file downloads to a target directory via CDP + filesystem polling.",
   "license": "MIT",
   "repository": {

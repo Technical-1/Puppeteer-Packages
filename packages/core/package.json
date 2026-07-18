@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shared types, typed error hierarchy, and Logger interface for the @technical-1 Puppeteer suite",
   "license": "MIT",
   "repository": {

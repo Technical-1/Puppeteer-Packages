@@ -1,5 +1,30 @@
 # @technical-1/interaction-helpers
 
+## 0.2.0
+
+### Minor Changes
+
+- 500834d: Expand interaction-helpers with iframe-aware interaction, file upload, infinite scroll, and keyboard shortcuts.
+
+  - `safeClick`/`safeType`/`waitAndGet`/`scroll` now accept a `Page` or a `Frame`.
+  - `resolveFrame(page, { name | url | selector })` locates a `Frame` (by name, url substring/RegExp, or `<iframe>` selector) for frame-scoped interaction.
+  - `uploadFile` sets files on a plain `<input type=file>`; `uploadViaFileChooser` drives a styled button through the native file chooser. Both surface `SelectorNotFoundError`/`TimeoutError`.
+  - `autoScroll` scrolls until lazy-loaded content stops growing (poll-until-stable with a settle wait and a `maxScrolls` cap).
+  - `pressKey`/`pressShortcut` press Enter/Escape/Tab or Ctrl/Cmd/Shift/Alt + key combinations.
+  - `ScrollOptions` now extends `LoggerOption` and `scroll` emits a `"step"` log line, matching the other helpers.
+
+### Patch Changes
+
+- 82642f7: Declare a supported Node floor (`engines.node >=18`, matching the puppeteer-core
+  peer) on every package, and polish adoption docs: ESM-only notes on
+  launcher/navigation/extract, a chrome-setup cross-link in the launcher
+  quick-start, "TypeScript users only" @types/node wording in
+  navigation/chrome-setup, and README nit fixes (autoScroll frame support,
+  uploadFile parameter, network waiters import).
+- Updated dependencies [82642f7]
+- Updated dependencies [095f819]
+  - @technical-1/core@0.2.0
+
 ## 0.1.1
 
 ### Patch Changes

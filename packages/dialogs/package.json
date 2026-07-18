@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/dialogs",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Page-lifecycle JS dialog handler (alert/confirm/prompt/beforeunload) with an accept/dismiss policy for Puppeteer pages.",
   "license": "MIT",
   "repository": {

@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/navigation",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "goto with retry, waitUntil strategies, and SPA network-idle waiting",
   "license": "MIT",
   "repository": {

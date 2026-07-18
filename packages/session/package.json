@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/session",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Capture and restore browser session state — cookies, localStorage, sessionStorage — with a label-keyed store for multi-account workflows.",
   "type": "module",
   "main": "./dist/index.cjs",

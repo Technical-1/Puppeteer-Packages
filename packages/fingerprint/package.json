@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/fingerprint",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "UA / viewport / locale / timezone randomization",
   "license": "MIT",
   "repository": {

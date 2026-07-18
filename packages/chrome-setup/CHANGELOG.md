@@ -1,5 +1,19 @@
 # @technical-1/chrome-setup
 
+## 0.1.1
+
+### Patch Changes
+
+- 82642f7: Declare a supported Node floor (`engines.node >=18`, matching the puppeteer-core
+  peer) on every package, and polish adoption docs: ESM-only notes on
+  launcher/navigation/extract, a chrome-setup cross-link in the launcher
+  quick-start, "TypeScript users only" @types/node wording in
+  navigation/chrome-setup, and README nit fixes (autoScroll frame support,
+  uploadFile parameter, network waiters import).
+- Updated dependencies [82642f7]
+- Updated dependencies [095f819]
+  - @technical-1/core@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes

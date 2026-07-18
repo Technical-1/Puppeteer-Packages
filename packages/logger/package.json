@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/logger",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Console and EventEmitter implementations of the @technical-1/core Logger interface",
   "license": "MIT",
   "repository": {

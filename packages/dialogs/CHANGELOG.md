@@ -1,6 +1,10 @@
-# @technical-1/logger
+# @technical-1/dialogs
 
-## 0.1.1
+## 0.2.0
+
+### Minor Changes
+
+- 8c4c78c: Add `@technical-1/dialogs`: a page-lifecycle JS dialog handler. `handleDialogs(page, options)` attaches a `page.on('dialog', …)` listener that auto-responds to alert/confirm/prompt/beforeunload dialogs per a configurable accept/dismiss policy, supplies prompt text, records typed `DialogEvent`s, takes an optional DI logger, and returns a disposer. Response failures are surfaced as a retryable `PptrKitError` via an `onError` callback.
 
 ### Patch Changes
 
@@ -13,16 +17,3 @@
 - Updated dependencies [82642f7]
 - Updated dependencies [095f819]
   - @technical-1/core@0.2.0
-
-## 0.1.0
-
-### Minor Changes
-
-- c9fcbac: Initial release of the utility tier: `withRetry` (backoff keyed off the core
-  `retryable` contract), console + EventEmitter `Logger` implementations, and a
-  typed env/options `loadConfig`.
-
-### Patch Changes
-
-- Updated dependencies [1bbfebd]
-  - @technical-1/core@0.1.0
