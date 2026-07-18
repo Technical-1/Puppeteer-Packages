@@ -1,4 +1,4 @@
-import { PptrKitError } from "@technical-1/core";
+import { PoolError } from "@technical-1/core";
 import type { Browser } from "puppeteer-core";
 import { launch, type LaunchOptions, type PuppeteerLike } from "./launcher.js";
 
@@ -43,7 +43,7 @@ export class BrowserPool {
   constructor(puppeteer: PuppeteerLike, opts: LaunchOptions, poolOpts: PoolOptions = {}) {
     const size = poolOpts.size ?? 1;
     if (!Number.isInteger(size) || size < 1) {
-      throw new PptrKitError(`BrowserPool size must be a positive integer, got ${size}`, {
+      throw new PoolError(`BrowserPool size must be a positive integer, got ${size}`, {
         retryable: false,
         context: { size },
       });
@@ -54,7 +54,7 @@ export class BrowserPool {
   }
 
   async acquire(): Promise<Browser> {
-    if (this.#drained) throw new Error("BrowserPool has been drained");
+    if (this.#drained) throw new PoolError("BrowserPool has been drained", { retryable: false });
     const idle = this.#idle.pop();
     if (idle) {
       this.#busy.add(idle);
@@ -73,7 +73,7 @@ export class BrowserPool {
       if (this.#drained) {
         // Pool drained while this launch was in flight — don't leak it.
         await browser.close().catch(() => {});
-        throw new Error("BrowserPool has been drained");
+        throw new PoolError("BrowserPool has been drained", { retryable: false });
       }
       this.#busy.add(browser);
       return browser;
@@ -106,7 +106,9 @@ export class BrowserPool {
   async drain(): Promise<void> {
     this.#drained = true;
     const waiters = this.#waiters.splice(0);
-    for (const w of waiters) w.reject(new Error("BrowserPool has been drained"));
+    for (const w of waiters) {
+      w.reject(new PoolError("BrowserPool has been drained", { retryable: false }));
+    }
     const all = [...this.#idle, ...this.#busy];
     this.#idle.length = 0;
     this.#busy.clear();
@@ -116,10 +118,12 @@ export class BrowserPool {
       (r): r is PromiseRejectedResult => r.status === "rejected",
     );
     if (failed.length > 0) {
-      throw new AggregateError(
-        failed.map((f) => f.reason),
-        `BrowserPool.drain: ${failed.length} browser(s) failed to close`,
-      );
+      const reasons = failed.map((f) => f.reason);
+      throw new PoolError(`BrowserPool.drain: ${failed.length} browser(s) failed to close`, {
+        retryable: false,
+        context: { reasons },
+        cause: new AggregateError(reasons, `BrowserPool.drain: ${failed.length} browser(s) failed to close`),
+      });
     }
   }
 
@@ -134,7 +138,7 @@ export class BrowserPool {
       (browser) => {
         if (this.#drained) {
           void browser.close().catch(() => {});
-          waiter.reject(new Error("BrowserPool has been drained"));
+          waiter.reject(new PoolError("BrowserPool has been drained", { retryable: false }));
           return;
         }
         this.#busy.add(browser);
