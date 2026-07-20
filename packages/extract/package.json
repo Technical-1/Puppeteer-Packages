@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/extract",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "List, table, and schema-driven DOM extraction helpers",
   "license": "MIT",
   "repository": {

@@ -1,10 +1,21 @@
-# @technical-1/pdf
+# @technical-1/emulation
 
 ## 1.0.0
 
 ### Major Changes
 
 - Graduate the suite to its first stable release. All packages move to 1.0.0 with a committed, semver-stable public API: browser launch and a race-free pool, navigation with typed retries and gesture-triggered waits, data extraction, iframe-aware interaction, file upload, infinite scroll, keyboard shortcuts, device/viewport emulation, multi-tab/popup coordination, dialog handling, response capture and predicate event waits, session persistence, anti-detection building blocks, screenshots, PDF, downloads, and a captcha adapter interface — all sharing a typed, cross-realm-safe error hierarchy and a bring-your-own-logger contract, with puppeteer-core as a bounded peer dependency.
+
+### Minor Changes
+
+- 38d1cd5: Add `@technical-1/emulation`: device, viewport, and mobile emulation for Puppeteer pages.
+  `emulateDevice(page, target, options?)` applies a `KnownDevices` preset by name, a full
+  `Device` (`{ userAgent, viewport }`) via `page.emulate`, or a bare `Viewport`
+  (`{ width, height, deviceScaleFactor?, isMobile?, hasTouch?, isLandscape? }`) via
+  `page.setViewport`. `listKnownDevices()` returns the installed preset names. Failures throw
+  typed `PptrKitError`s (unknown preset name is non-retryable; page failures are retryable) and
+  an optional DI logger is supported. Permissions/geolocation/media/CPU overrides are
+  intentionally deferred to the 1.x line.
 
 ### Patch Changes
 
@@ -18,31 +29,3 @@
 - Updated dependencies [095f819]
 - Updated dependencies
   - @technical-1/core@1.0.0
-
-## 0.1.1
-
-### Patch Changes
-
-- 6ecf5eb: Clarify in each README that these are convenience wrappers — they add the suite's typed errors / injected logger / sane defaults for consistency, not new capability beyond the underlying puppeteer-core API or plugin.
-
-## 0.1.0
-
-### Minor Changes
-
-- 0d299da: Output tier: `screenshots` (timestamped/full-page/element capture helpers
-  ported from the Kanfer baseline), `pdf` (`pageToPdf` with sane defaults —
-  A4, printBackground, 1cm margins), and `downloads` (`enableDownloads` via
-  CDP `Browser.setDownloadBehavior` + `awaitDownload` filesystem polling).
-  All three declare `@technical-1/core` as a dependency and `puppeteer-core`
-  `>=22 <25` as a peer. `screenshots.screenshotElement` throws
-  `SelectorNotFoundError` (terminal); all other thrown failures are
-  `PptrKitError` with explicit `retryable` (typically `true` for CDP /
-  page-state transients; `false` for snapshot/trigger programmer errors in
-  `downloads`).
-- 55c0e59: `pageToPdf` deep-merges the `margin` per side, so a partial margin keeps the
-  unspecified sides at the 1cm default instead of dropping them to 0.
-
-### Patch Changes
-
-- Updated dependencies [1bbfebd]
-  - @technical-1/core@0.1.0

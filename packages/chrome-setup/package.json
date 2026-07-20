@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/chrome-setup",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Resolve or download a Chrome build for the @technical-1 Puppeteer suite",
   "license": "MIT",
   "repository": {

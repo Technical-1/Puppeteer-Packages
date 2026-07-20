@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/config",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Typed environment/options loader with schema and defaults for the @technical-1 suite",
   "license": "MIT",
   "repository": {

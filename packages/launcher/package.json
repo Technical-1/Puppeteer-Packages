@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/launcher",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Launch options, headless toggle, and a guaranteed-cleanup browser pool",
   "license": "MIT",
   "repository": {
