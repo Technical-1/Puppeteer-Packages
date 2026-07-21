@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
 import * as authFlow from "./index.js";
 
-describe("scaffold", () => {
-  it("module loads", () => {
-    expect(authFlow).toBeTypeOf("object");
+describe("public surface", () => {
+  it("exposes login only", () => {
+    expect(typeof authFlow.login).toBe("function");
+    expect(Object.keys(authFlow).sort()).toEqual(["login"]);
   });
 });

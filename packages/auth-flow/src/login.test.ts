@@ -230,4 +230,23 @@ describe("login — logger", () => {
       "step",
     );
   });
+
+  it("logs the MFA step line through the injected logger", async () => {
+    const { page } = pageMock();
+    const log = vi.fn();
+    await login(
+      page,
+      {
+        usernameSelector: "#user",
+        username: "alice",
+        passwordSelector: "#pass",
+        password: "s3cret",
+        submitSelector: "#submit",
+        authenticated: { selector: "#dashboard" },
+        mfa: { codeSelector: "#otp", code: "123456" },
+      },
+      { logger: { log } },
+    );
+    expect(log).toHaveBeenCalledWith("auth-flow: handling MFA step", "step");
+  });
 });
