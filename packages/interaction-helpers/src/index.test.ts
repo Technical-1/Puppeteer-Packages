@@ -14,6 +14,9 @@ describe("public surface", () => {
       "uploadViaFileChooser",
       "pressKey",
       "pressShortcut",
+      "waitForFunction",
+      "readClipboard",
+      "writeClipboard",
     ] as const;
     for (const name of fns) {
       expect(typeof (ih as Record<string, unknown>)[name]).toBe("function");

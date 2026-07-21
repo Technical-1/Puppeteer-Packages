@@ -22,6 +22,8 @@ const heading = await waitAndGet(page, "h1");
 - `uploadViaFileChooser(page, triggerSelector, files)` — drive a styled upload button through the native file chooser.
 - `scroll(page, { by? })` — single scroll (to bottom, or by N px). `autoScroll(page, { maxScrolls?, step?, settleMs?, itemSelector? })` — loop until lazy content stops growing.
 - `pressKey(page, key)` / `pressShortcut(page, modifiers, key)` — press Enter/Escape/Tab or a Ctrl/Cmd/Shift/Alt + key combo.
+- `waitForFunction(page, fn, { timeout?, polling?, args? })` — poll an in-page predicate until truthy, resolving its `JSHandle`; throws `TimeoutError` on a poll timeout. Accepts a `Page` **or** a `Frame`.
+- `readClipboard(page)` / `writeClipboard(page, text)` — read/write the clipboard via `navigator.clipboard`, granting the clipboard permission on the page's own origin. Requires a secure `http(s)` origin (throws `ConfigError` on `about:blank`/`file:`).
 
 All helpers take an optional injected `logger` and emit a `"step"` log line; all thrown failures are `@technical-1/core` typed errors.
 
@@ -77,4 +79,18 @@ import { pressKey, pressShortcut } from "@technical-1/interaction-helpers";
 await pressKey(page, "Enter");
 await pressShortcut(page, "Control", "KeyA"); // Ctrl+A
 await pressShortcut(page, ["Meta", "Shift"], "KeyZ"); // Cmd+Shift+Z
+```
+
+### Wait for a predicate / clipboard
+
+```ts
+import { waitForFunction, readClipboard, writeClipboard } from "@technical-1/interaction-helpers";
+
+await waitForFunction(page, () => document.querySelectorAll(".row").length >= 10, {
+  timeout: 10_000,
+  polling: "mutation",
+});
+
+await writeClipboard(page, "prefilled");
+const copied = await readClipboard(page); // e.g. verify a "copy link" button
 ```
