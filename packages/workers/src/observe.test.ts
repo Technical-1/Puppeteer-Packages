@@ -81,6 +81,35 @@ describe("observeWorkers — consumer isolation", () => {
     expect(err.context).toEqual({ kind: "created", url: "blob:a" });
     expect(obs.created).toEqual([{ url: "blob:a", worker: w }]);
   });
+
+  it("logs the error through the injected logger when a consumer callback throws", () => {
+    const { page, fireCreated } = pageMock();
+    const log = vi.fn();
+    const onError = vi.fn();
+    observeWorkers(page, {
+      logger: { log },
+      onWorkerCreated: () => {
+        throw new Error("consumer boom");
+      },
+      onError,
+    });
+    const w = workerMock("blob:a");
+    expect(() => fireCreated(w)).not.toThrow();
+    expect(onError).toHaveBeenCalledTimes(1);
+    const err = onError.mock.calls[0]![0] as {
+      name: string;
+      retryable: boolean;
+      message: string;
+      context: Record<string, unknown>;
+    };
+    expect(err.name).toBe("WorkerError");
+    expect(err.retryable).toBe(true);
+    expect(err.context).toEqual({ kind: "created", url: "blob:a" });
+    expect(log).toHaveBeenCalledWith(
+      "workers: consumer callback threw for created worker",
+      "error",
+    );
+  });
 });
 
 describe("observeWorkers — disposal", () => {
