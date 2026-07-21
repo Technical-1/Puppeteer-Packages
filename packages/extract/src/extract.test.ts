@@ -199,6 +199,38 @@ describe("extractAll", () => {
   });
 });
 
+describe("extractAll pierceShadow", () => {
+  it("collects matches across the top document AND open shadow roots", async () => {
+    const shadowMatch = fakeEl(" inner ");
+    const shadow: FakeDocument = {
+      querySelector: () => null,
+      querySelectorAll: (s) => (s === ".x" ? [shadowMatch] : []),
+    };
+    const host = fakeEl(null);
+    host.shadowRoot = shadow;
+    const topMatch = fakeEl(" outer ");
+    const doc: FakeDocument = {
+      querySelectorAll: (s) => {
+        if (s === ".x") return [topMatch]; // top-level matches
+        if (s === "*") return [host]; // shadow hosts to recurse into
+        return [];
+      },
+      querySelector: () => null,
+    };
+    const page = captureEvaluatePage(doc, []);
+    expect(await extractAll(page, ".x", { pierceShadow: true })).toEqual(["outer", "inner"]);
+  });
+
+  it("default (deep=false) does not enumerate shadow hosts", async () => {
+    const doc: FakeDocument = {
+      querySelector: () => null,
+      querySelectorAll: (s) => (s === ".x" ? [fakeEl(" a ")] : (() => { throw new Error("no '*'"); })()),
+    };
+    const page = captureEvaluatePage(doc, []);
+    expect(await extractAll(page, ".x")).toEqual(["a"]);
+  });
+});
+
 describe("extractTable", () => {
   it("returns a 2D array of trimmed cell text", async () => {
     const page = mockPage({

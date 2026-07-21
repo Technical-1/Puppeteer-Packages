@@ -49,12 +49,33 @@ export async function extractText(
   return text.trim();
 }
 
-/** Trimmed textContent of every match (empty array if none). */
-export async function extractAll(page: Page, selector: string): Promise<string[]> {
-  const texts = await page.evaluate((sel: string) => {
-    const nodes = Array.from(document.querySelectorAll(sel));
-    return nodes.map((el) => (el.textContent ? el.textContent : ""));
-  }, selector);
+/** Trimmed textContent of every match (empty array if none). Optionally pierces open shadow roots. */
+export async function extractAll(
+  page: Page,
+  selector: string,
+  options: ExtractOptions = {},
+): Promise<string[]> {
+  const pierce = options.pierceShadow ?? false;
+  const texts = await page.evaluate(
+    (sel: string, deep: boolean) => {
+      function deepAll(root: InPageRoot, s: string, out: InPageElement[]): void {
+        for (const el of Array.from(root.querySelectorAll(s))) out.push(el);
+        for (const el of Array.from(root.querySelectorAll("*"))) {
+          if (el.shadowRoot) deepAll(el.shadowRoot, s, out);
+        }
+      }
+      let nodes: InPageElement[];
+      if (deep) {
+        nodes = [];
+        deepAll(document, sel, nodes);
+      } else {
+        nodes = Array.from(document.querySelectorAll(sel));
+      }
+      return nodes.map((el) => (el.textContent ? el.textContent : ""));
+    },
+    selector,
+    pierce,
+  );
   return texts.map((t) => t.trim());
 }
 
