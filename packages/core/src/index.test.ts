@@ -15,6 +15,7 @@ describe("public surface", () => {
         "SessionError",
         "ConfigError",
         "PoolError",
+        "ContextError",
         "DownloadError",
         "NetworkError",
         "AbortError",

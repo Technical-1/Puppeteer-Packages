@@ -9,6 +9,7 @@ import {
   SessionError,
   ConfigError,
   PoolError,
+  ContextError,
   DownloadError,
   NetworkError,
   AbortError,
@@ -114,5 +115,28 @@ describe("Plan 24 discriminable subclasses", () => {
     const e = new NetworkError("wrap", { cause, context: { url: "u" } });
     expect(e.cause).toBe(cause);
     expect(e.context).toEqual({ url: "u" });
+  });
+});
+
+describe("ContextError", () => {
+  it("is a PptrKitError, terminal by default, with a cross-realm-safe name", () => {
+    const err = new ContextError("contexts: create failed");
+    expect(err).toBeInstanceOf(PptrKitError);
+    expect(err.name).toBe("ContextError");
+    expect(err.retryable).toBe(false);
+    expect(err.message).toBe("contexts: create failed");
+    expect(err.context).toEqual({});
+  });
+
+  it("honors retryable:true and carries cause + context", () => {
+    const cause = new Error("target closed");
+    const err = new ContextError("contexts: close failed", {
+      retryable: true,
+      cause,
+      context: { op: "close" },
+    });
+    expect(err.retryable).toBe(true);
+    expect(err.cause).toBe(cause);
+    expect(err.context).toEqual({ op: "close" });
   });
 });

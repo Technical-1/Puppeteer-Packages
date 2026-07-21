@@ -81,6 +81,18 @@ export class PoolError extends PptrKitError {
 }
 
 /**
+ * A BrowserContext lifecycle failure (create / close / targets / permission
+ * override). Terminal by default like PoolError; transient CDP rejections
+ * (context create/close hiccup, permission override race) pass retryable:true
+ * explicitly at the throw site.
+ */
+export class ContextError extends PptrKitError {
+  constructor(message: string, opts: PptrKitErrorOptions = {}) {
+    super(message, { retryable: false, ...opts });
+  }
+}
+
+/**
  * A file-download operation failed. Terminal by default; transient
  * download failures (CDP hiccup, mid-poll fs race) pass `retryable:true`
  * explicitly at the throw site.

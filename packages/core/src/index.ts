@@ -8,6 +8,7 @@ export {
   SessionError,
   ConfigError,
   PoolError,
+  ContextError,
   DownloadError,
   NetworkError,
   AbortError,
