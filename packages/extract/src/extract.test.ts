@@ -392,3 +392,23 @@ describe("extractSchema", () => {
     expect(evaluate).toHaveBeenCalledOnce();
   });
 });
+
+describe("extractSchema pierceShadow", () => {
+  it("forwards pierceShadow to each per-field extractText (deep path)", async () => {
+    // shadow-hosted field: no direct match, resolved via '*' → host.shadowRoot
+    const nameMatch = fakeEl(" Widget ");
+    const shadow: FakeDocument = {
+      querySelector: (s) => (s === ".name" ? nameMatch : null),
+      querySelectorAll: () => [],
+    };
+    const host = fakeEl(null);
+    host.shadowRoot = shadow;
+    const doc: FakeDocument = {
+      querySelector: () => null,
+      querySelectorAll: (s) => (s === "*" ? [host] : []),
+    };
+    const page = captureEvaluatePage(doc, " Widget ");
+    const row = await extractSchema(page, { name: ".name" }, { pierceShadow: true });
+    expect(row).toEqual({ name: "Widget" });
+  });
+});

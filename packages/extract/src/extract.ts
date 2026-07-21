@@ -127,18 +127,19 @@ export type ExtractSchema = Record<string, string>;
 
 /**
  * Map each field's selector to its trimmed text ("" when the node is absent).
- * Performs N sequential `extractText` (one `page.evaluate` round-trip per
- * field); batch via a single `page.evaluate` if a large schema is perf-critical.
+ * Performs N sequential `extractText` round-trips. `pierceShadow` is applied to
+ * every field.
  */
 export async function extractSchema(
   page: Page,
   schema: ExtractSchema,
+  options: ExtractOptions = {},
 ): Promise<Record<string, string>> {
   const out: Record<string, string> = {};
   for (const key of Object.keys(schema)) {
     const selector = schema[key];
     if (selector === undefined) continue;
-    out[key] = await extractText(page, selector);
+    out[key] = await extractText(page, selector, options);
   }
   return out;
 }
