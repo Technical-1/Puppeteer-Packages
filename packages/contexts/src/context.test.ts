@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import type { Browser, BrowserContext } from "puppeteer-core";
-import { createIsolatedContext } from "./context.js";
+import type { Browser, BrowserContext, Target } from "puppeteer-core";
+import { createIsolatedContext, listContextTargets } from "./context.js";
 
 /** Minimal BrowserContext stub. */
 function contextMock(over: Partial<Record<string, unknown>> = {}): BrowserContext {
@@ -100,6 +100,42 @@ describe("createIsolatedContext", () => {
     expect(log).toHaveBeenCalledWith(
       "contexts: isolated context created (0 permission grants)",
       "success",
+    );
+  });
+});
+
+function targetMock(type: string, url: string): Target {
+  return {
+    type: vi.fn().mockReturnValue(type),
+    url: vi.fn().mockReturnValue(url),
+  } as unknown as Target;
+}
+
+describe("listContextTargets", () => {
+  it("maps each target to typed TargetInfo", () => {
+    const ctx = {
+      targets: vi.fn().mockReturnValue([
+        targetMock("page", "https://a.com"),
+        targetMock("service_worker", "https://a.com/sw.js"),
+      ]),
+    } as unknown as BrowserContext;
+    expect(listContextTargets(ctx)).toEqual([
+      { type: "page", url: "https://a.com" },
+      { type: "service_worker", url: "https://a.com/sw.js" },
+    ]);
+  });
+
+  it("returns an empty array for a context with no targets", () => {
+    const ctx = { targets: vi.fn().mockReturnValue([]) } as unknown as BrowserContext;
+    expect(listContextTargets(ctx)).toEqual([]);
+  });
+
+  it("wraps a targets() throw as a retryable ContextError", () => {
+    const ctx = {
+      targets: vi.fn(() => { throw new Error("detached"); }),
+    } as unknown as BrowserContext;
+    expect(() => listContextTargets(ctx)).toThrowError(
+      expect.objectContaining({ name: "ContextError", retryable: true }),
     );
   });
 });

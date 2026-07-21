@@ -1,7 +1,7 @@
-import type { Browser, BrowserContext, BrowserContextOptions } from "puppeteer-core";
+import type { Browser, BrowserContext, BrowserContextOptions, Target } from "puppeteer-core";
 import { ContextError } from "@technical-1/core";
 import type { LoggerOption } from "@technical-1/core";
-import type { IsolatedContextOptions } from "./types.js";
+import type { IsolatedContextOptions, TargetInfo } from "./types.js";
 
 /** Close a context without ever throwing; a close failure is only logged. */
 async function closeQuietly(
@@ -68,6 +68,21 @@ export async function createIsolatedContext(
     "success",
   );
   return context;
+}
+
+/**
+ * Enumerate a context's targets as flat, typed rows. Synchronous — mirrors
+ * puppeteer-core's synchronous `BrowserContext.targets()`.
+ */
+export function listContextTargets(context: BrowserContext): TargetInfo[] {
+  try {
+    return context.targets().map((t: Target) => ({ type: t.type(), url: t.url() }));
+  } catch (cause) {
+    throw new ContextError("contexts: failed to enumerate context targets", {
+      retryable: true,
+      cause,
+    });
+  }
 }
 
 export { closeQuietly };
