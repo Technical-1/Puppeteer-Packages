@@ -131,4 +131,26 @@ export async function clearContextPermissions(
   opts.logger?.log("contexts: cleared permission overrides", "success");
 }
 
+/**
+ * Create an isolated context, run `fn`, and ALWAYS close the context afterward
+ * (like launcher's withBrowser). A close() failure is logged, never thrown: it
+ * must not mask an `fn` error nor discard an `fn` result.
+ */
+export async function withContext<T>(
+  browser: Browser,
+  fn: (context: BrowserContext) => Promise<T>,
+  opts: IsolatedContextOptions = {},
+): Promise<T> {
+  const context = await createIsolatedContext(browser, opts);
+  let result: T;
+  try {
+    result = await fn(context);
+  } catch (err) {
+    await closeQuietly(context, opts);
+    throw err;
+  }
+  await closeQuietly(context, opts);
+  return result;
+}
+
 export { closeQuietly };

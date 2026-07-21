@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import type { Browser, BrowserContext, Target } from "puppeteer-core";
 import { createIsolatedContext, listContextTargets } from "./context.js";
 import { overridePermissions, clearContextPermissions } from "./context.js";
+import { withContext } from "./context.js";
 
 /** Minimal BrowserContext stub. */
 function contextMock(over: Partial<Record<string, unknown>> = {}): BrowserContext {
@@ -182,5 +183,61 @@ describe("clearContextPermissions", () => {
       name: "ContextError",
       retryable: true,
     });
+  });
+});
+
+describe("withContext", () => {
+  it("runs fn against the context and closes it afterward", async () => {
+    const ctx = contextMock();
+    const { browser } = browserMock(ctx);
+    const fn = vi.fn().mockResolvedValue("ok");
+    const result = await withContext(browser, fn);
+    expect(result).toBe("ok");
+    expect(fn).toHaveBeenCalledWith(ctx);
+    expect(ctx.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes the context and rethrows the original fn error", async () => {
+    const ctx = contextMock();
+    const { browser } = browserMock(ctx);
+    const boom = new Error("fn failed");
+    await expect(
+      withContext(browser, () => Promise.reject(boom)),
+    ).rejects.toBe(boom);
+    expect(ctx.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not let a close() failure mask the fn result", async () => {
+    const ctx = contextMock({
+      close: vi.fn().mockRejectedValue(new Error("close boom")),
+    });
+    const { browser } = browserMock(ctx);
+    const log = vi.fn();
+    const result = await withContext(browser, () => Promise.resolve(42), {
+      logger: { log },
+    });
+    expect(result).toBe(42);
+    expect(log).toHaveBeenCalledWith(
+      "contexts: context close failed: close boom",
+      "warn",
+    );
+  });
+
+  it("does not let a close() failure mask the fn error", async () => {
+    const ctx = contextMock({
+      close: vi.fn().mockRejectedValue(new Error("close boom")),
+    });
+    const { browser } = browserMock(ctx);
+    const boom = new Error("fn failed");
+    await expect(withContext(browser, () => Promise.reject(boom))).rejects.toBe(boom);
+  });
+
+  it("forwards options (proxy/permissions) to createIsolatedContext", async () => {
+    const ctx = contextMock();
+    const { browser, create } = browserMock(ctx);
+    await withContext(browser, () => Promise.resolve(null), {
+      proxyServer: "http://h:2",
+    });
+    expect(create).toHaveBeenCalledWith({ proxyServer: "http://h:2" });
   });
 });
