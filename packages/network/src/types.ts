@@ -3,6 +3,16 @@ import type { ResourceType } from "puppeteer-core";
 /** A request-blocking pattern. */
 export type BlockPattern = ResourceType | RegExp;
 
+/** One hop in a redirect chain leading to a final response. */
+export interface RedirectHop {
+  /** The URL that issued the redirect. */
+  url: string;
+  /** HTTP method of the redirect request. */
+  method: string;
+  /** Status of the redirect hop (e.g. 301/302), or `null` if it had no response. */
+  status: number | null;
+}
+
 /** A single captured response. Body access is lazy and opt-in. */
 export interface ResponseRecord {
   url: string;
@@ -15,6 +25,13 @@ export interface ResponseRecord {
   fromCache: boolean;
   /** `Date.now()` at the moment puppeteer fired the response event. */
   timestamp: number;
+  /**
+   * Redirect hops that preceded this response, oldest→newest (empty when the
+   * request was not redirected). Reconstructed eagerly from
+   * `response.request().redirectChain()`; the final hop is THIS record itself
+   * (its own `url`/`status`).
+   */
+  redirects: readonly RedirectHop[];
   /**
    * Lazily fetch the raw response body. Opt-in: only enabled when this
    * response's `resourceType` matched the `body` gate passed to

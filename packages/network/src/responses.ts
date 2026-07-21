@@ -1,6 +1,6 @@
 import { NetworkError } from "@technical-1/core";
 import type { HTTPResponse, Page, ResourceType } from "puppeteer-core";
-import type { ResponseCollector, ResponseRecord } from "./types.js";
+import type { RedirectHop, ResponseCollector, ResponseRecord } from "./types.js";
 
 export interface CaptureResponsesOptions {
   /** Optional allow-list of resource types. Omit to capture everything. */
@@ -101,6 +101,11 @@ export function captureResponses(
     const resourceType = req.resourceType();
     if (include !== undefined && !include.includes(resourceType)) return;
     const accessors = makeBodyAccessors(res, bodyEnabledFor(body, resourceType), resourceType);
+    const redirects: RedirectHop[] = req.redirectChain().map((hop) => ({
+      url: hop.url(),
+      method: hop.method(),
+      status: hop.response()?.status() ?? null,
+    }));
     records.push({
       url: res.url(),
       status: res.status(),
@@ -109,6 +114,7 @@ export function captureResponses(
       headers: res.headers(),
       fromCache: res.fromCache(),
       timestamp: Date.now(),
+      redirects,
       ...accessors,
     });
   };
