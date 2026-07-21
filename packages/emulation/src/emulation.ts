@@ -5,6 +5,7 @@ import type {
   BrowserContext,
   Device,
   GeolocationOptions,
+  MediaFeature,
   Page,
   Permission,
   Viewport,
@@ -281,4 +282,97 @@ export async function setGeolocation(
     });
   }
   logger?.log(`geolocation set ${coords.latitude},${coords.longitude}`, "success");
+}
+
+/** The `prefers-color-scheme` value to emulate. */
+export type ColorScheme = "light" | "dark" | "no-preference";
+
+/** The `prefers-reduced-motion` value to emulate. */
+export type ReducedMotion = "reduce" | "no-preference";
+
+/** The `forced-colors` value to emulate. */
+export type ForcedColors = "active" | "none";
+
+/** The `color-gamut` value to emulate. */
+export type ColorGamut = "srgb" | "p3" | "rec2020";
+
+/** The CSS media type to emulate (`page.emulateMediaType`). Pass `null` to clear it. */
+export type MediaType = "screen" | "print" | null;
+
+/**
+ * The media type and/or media features to emulate via {@link emulateMedia}.
+ *
+ * Provide `mediaType` to switch `page.emulateMediaType` (or `null` to clear it back to the
+ * default), and/or any of `colorScheme` / `reducedMotion` / `forcedColors` / `colorGamut` to
+ * apply the corresponding `prefers-color-scheme` / `prefers-reduced-motion` / `forced-colors` /
+ * `color-gamut` media feature via `page.emulateMediaFeatures`.
+ */
+export interface MediaEmulation {
+  mediaType?: MediaType;
+  colorScheme?: ColorScheme;
+  reducedMotion?: ReducedMotion;
+  forcedColors?: ForcedColors;
+  colorGamut?: ColorGamut;
+}
+
+/** Options for {@link emulateMedia}. */
+export interface EmulateMediaOptions extends LoggerOption {}
+
+/** Build the `page.emulateMediaFeatures` list from the feature fields of a {@link MediaEmulation}. */
+function buildFeatures(media: MediaEmulation): MediaFeature[] {
+  const features: MediaFeature[] = [];
+  if (media.colorScheme !== undefined)
+    features.push({ name: "prefers-color-scheme", value: media.colorScheme });
+  if (media.reducedMotion !== undefined)
+    features.push({ name: "prefers-reduced-motion", value: media.reducedMotion });
+  if (media.forcedColors !== undefined)
+    features.push({ name: "forced-colors", value: media.forcedColors });
+  if (media.colorGamut !== undefined)
+    features.push({ name: "color-gamut", value: media.colorGamut });
+  return features;
+}
+
+/**
+ * Emulate CSS media type and/or media features on `page`.
+ *
+ * - `mediaType` switches `page.emulateMediaType` (`null` clears the override).
+ * - `colorScheme` / `reducedMotion` / `forcedColors` / `colorGamut` are collected into a single
+ *   `page.emulateMediaFeatures` call as `prefers-color-scheme` / `prefers-reduced-motion` /
+ *   `forced-colors` / `color-gamut` media features respectively.
+ *
+ * Throws `ConfigError` (`retryable:false`) when `media` provides neither a `mediaType` key nor
+ * any media feature. Wraps an `emulateMediaType` / `emulateMediaFeatures` rejection as
+ * `PptrKitError` `retryable:true` carrying the original as `cause`.
+ */
+export async function emulateMedia(
+  page: Page,
+  media: MediaEmulation,
+  options: EmulateMediaOptions = {},
+): Promise<void> {
+  const { logger } = options;
+  const hasMediaType = "mediaType" in media;
+  const features = buildFeatures(media);
+  if (!hasMediaType && features.length === 0) {
+    throw new ConfigError("emulateMedia: provide at least one media type or feature", {
+      context: { received: Object.keys(media) },
+    });
+  }
+
+  logger?.log("emulating media", "step");
+  try {
+    if (hasMediaType) {
+      // null clears the override; puppeteer accepts undefined to clear as well.
+      await page.emulateMediaType(media.mediaType ?? undefined);
+    }
+    if (features.length > 0) {
+      await page.emulateMediaFeatures(features);
+    }
+  } catch (cause) {
+    throw new PptrKitError("emulateMedia: media emulation failed", {
+      retryable: true,
+      cause,
+      context: { mediaType: media.mediaType ?? null, features: features.length },
+    });
+  }
+  logger?.log("media emulated", "success");
 }

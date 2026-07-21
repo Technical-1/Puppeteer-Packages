@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
-import { emulateDevice, listKnownDevices, overridePermissions, setGeolocation } from "./emulation.js";
+import {
+  emulateDevice,
+  emulateMedia,
+  listKnownDevices,
+  overridePermissions,
+  setGeolocation,
+} from "./emulation.js";
 import { PptrKitError } from "@technical-1/core";
 import { KnownDevices } from "puppeteer-core";
 import type { BrowserContext, Page } from "puppeteer-core";
@@ -327,6 +333,93 @@ describe("setGeolocation", () => {
     const page = geoPage();
     (page.setGeolocation as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(boom);
     await expect(setGeolocation(page, { latitude: 1, longitude: 2 })).rejects.toMatchObject({
+      name: "PptrKitError",
+      retryable: true,
+      cause: boom,
+    });
+  });
+});
+
+function mediaPage(overrides: Record<string, unknown> = {}): Page {
+  return {
+    emulateMediaType: vi.fn().mockResolvedValue(undefined),
+    emulateMediaFeatures: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  } as unknown as Page;
+}
+
+describe("emulateMedia", () => {
+  it("emulates a media type via emulateMediaType and no features", async () => {
+    const page = mediaPage();
+    await emulateMedia(page, { mediaType: "print" });
+    expect(page.emulateMediaType).toHaveBeenCalledWith("print");
+    expect(page.emulateMediaFeatures).not.toHaveBeenCalled();
+  });
+
+  it("maps colorScheme/reducedMotion/forcedColors/colorGamut to media features", async () => {
+    const page = mediaPage();
+    await emulateMedia(page, {
+      colorScheme: "dark",
+      reducedMotion: "reduce",
+      forcedColors: "active",
+      colorGamut: "p3",
+    });
+    expect(page.emulateMediaFeatures).toHaveBeenCalledWith([
+      { name: "prefers-color-scheme", value: "dark" },
+      { name: "prefers-reduced-motion", value: "reduce" },
+      { name: "forced-colors", value: "active" },
+      { name: "color-gamut", value: "p3" },
+    ]);
+    expect(page.emulateMediaType).not.toHaveBeenCalled();
+  });
+
+  it("applies both media type and features when both are provided", async () => {
+    const page = mediaPage();
+    await emulateMedia(page, { mediaType: "screen", colorScheme: "light" });
+    expect(page.emulateMediaType).toHaveBeenCalledWith("screen");
+    expect(page.emulateMediaFeatures).toHaveBeenCalledWith([
+      { name: "prefers-color-scheme", value: "light" },
+    ]);
+  });
+
+  it("clears the media type when mediaType is null", async () => {
+    const page = mediaPage();
+    await emulateMedia(page, { mediaType: null });
+    expect(page.emulateMediaType).toHaveBeenCalledWith(undefined);
+  });
+
+  it("emits DI logger step/success lines", async () => {
+    const page = mediaPage();
+    const logger = { log: vi.fn() };
+    await emulateMedia(page, { colorScheme: "dark" }, { logger });
+    expect(logger.log).toHaveBeenCalledWith("emulating media", "step");
+    expect(logger.log).toHaveBeenCalledWith("media emulated", "success");
+  });
+
+  it("throws ConfigError when the media spec is empty", async () => {
+    const page = mediaPage();
+    await expect(emulateMedia(page, {})).rejects.toMatchObject({
+      name: "ConfigError",
+      retryable: false,
+    });
+    expect(page.emulateMediaType).not.toHaveBeenCalled();
+    expect(page.emulateMediaFeatures).not.toHaveBeenCalled();
+  });
+
+  it("wraps an emulateMediaFeatures rejection as retryable PptrKitError with cause", async () => {
+    const boom = new Error("target closed");
+    const page = mediaPage({ emulateMediaFeatures: vi.fn().mockRejectedValue(boom) });
+    await expect(emulateMedia(page, { colorScheme: "dark" })).rejects.toMatchObject({
+      name: "PptrKitError",
+      retryable: true,
+      cause: boom,
+    });
+  });
+
+  it("wraps an emulateMediaType rejection as retryable PptrKitError with cause", async () => {
+    const boom = new Error("target closed");
+    const page = mediaPage({ emulateMediaType: vi.fn().mockRejectedValue(boom) });
+    await expect(emulateMedia(page, { mediaType: "print" })).rejects.toMatchObject({
       name: "PptrKitError",
       retryable: true,
       cause: boom,
