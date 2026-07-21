@@ -11,6 +11,7 @@ export {
   ContextError,
   DownloadError,
   NetworkError,
+  CdpError,
   AbortError,
 } from "./errors.js";
 export type { ErrorContext, PptrKitErrorOptions } from "./errors.js";

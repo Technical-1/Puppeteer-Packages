@@ -12,6 +12,7 @@ import {
   ContextError,
   DownloadError,
   NetworkError,
+  CdpError,
   AbortError,
 } from "./errors.js";
 
@@ -115,6 +116,29 @@ describe("Plan 24 discriminable subclasses", () => {
     const e = new NetworkError("wrap", { cause, context: { url: "u" } });
     expect(e.cause).toBe(cause);
     expect(e.context).toEqual({ url: "u" });
+  });
+});
+
+describe("Plan 30 CdpError discriminant", () => {
+  it("is a terminal PptrKitError that names itself", () => {
+    const e = new CdpError("boom");
+    expect(e).toBeInstanceOf(PptrKitError);
+    expect(e).toBeInstanceOf(CdpError);
+    expect(e.name).toBe("CdpError");
+    expect(e.retryable).toBe(false);
+    expect(e.context).toEqual({});
+  });
+
+  it("honors an explicit retryable and carries cause + context", () => {
+    const cause = new Error("session detached");
+    const e = new CdpError("cmd failed", {
+      retryable: true,
+      cause,
+      context: { method: "Emulation.setGeolocationOverride" },
+    });
+    expect(e.retryable).toBe(true);
+    expect(e.cause).toBe(cause);
+    expect(e.context).toEqual({ method: "Emulation.setGeolocationOverride" });
   });
 });
 

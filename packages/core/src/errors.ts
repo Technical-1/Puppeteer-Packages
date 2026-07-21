@@ -115,6 +115,18 @@ export class NetworkError extends PptrKitError {
 }
 
 /**
+ * A raw Chrome DevTools Protocol operation failed (open session, send command,
+ * detach). Terminal by default — a bad method name or bad params is programmer
+ * error — but transient CDP failures (session detached, target closed) pass
+ * `retryable:true` explicitly at the throw site.
+ */
+export class CdpError extends PptrKitError {
+  constructor(message: string, opts: PptrKitErrorOptions = {}) {
+    super(message, { retryable: false, ...opts });
+  }
+}
+
+/**
  * An operation was cancelled via an `AbortSignal`. Terminal (never retried):
  * the caller asked to stop. Its stable `name === "AbortError"` is the
  * cross-realm-safe cancellation discriminant — consumers detect aborts by
