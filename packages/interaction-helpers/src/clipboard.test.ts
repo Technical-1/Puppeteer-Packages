@@ -48,6 +48,14 @@ describe("readClipboard", () => {
     expect(err.retryable).toBe(false);
     expect(err.cause).toBe(cause);
   });
+
+  it("throws ConfigError when the page URL is unparseable", async () => {
+    const { page, override } = pageWith({ url: "://not a url" });
+    const err = await readClipboard(page).catch((e) => e);
+    expect(err.name).toBe("ConfigError");
+    expect(err.retryable).toBe(false);
+    expect(override).not.toHaveBeenCalled();
+  });
 });
 
 describe("writeClipboard", () => {
@@ -67,5 +75,14 @@ describe("writeClipboard", () => {
     const { page } = pageWith({ url: "file:///tmp/x.html" });
     const err = await writeClipboard(page, "hi").catch((e) => e);
     expect(err.name).toBe("ConfigError");
+  });
+
+  it("wraps a write-side evaluate rejection as a non-retryable PptrKitError", async () => {
+    const cause = new Error("Clipboard write blocked");
+    const { page } = pageWith({ evaluate: vi.fn().mockRejectedValue(cause) });
+    const err = await writeClipboard(page, "x").catch((e) => e);
+    expect(err.name).toBe("PptrKitError");
+    expect(err.retryable).toBe(false);
+    expect(err.cause).toBe(cause);
   });
 });
