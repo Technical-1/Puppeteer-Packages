@@ -18,6 +18,7 @@ describe("public surface", () => {
         "ContextError",
         "DownloadError",
         "NetworkError",
+        "WorkerError",
         "CdpError",
         "AbortError",
       ].sort(),

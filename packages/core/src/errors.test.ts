@@ -12,6 +12,7 @@ import {
   ContextError,
   DownloadError,
   NetworkError,
+  WorkerError,
   CdpError,
   AbortError,
 } from "./errors.js";
@@ -139,6 +140,26 @@ describe("Plan 30 CdpError discriminant", () => {
     expect(e.retryable).toBe(true);
     expect(e.cause).toBe(cause);
     expect(e.context).toEqual({ method: "Emulation.setGeolocationOverride" });
+  });
+});
+
+describe("WorkerError", () => {
+  it("is terminal by default with cross-realm-safe name", () => {
+    const err = new WorkerError("boom");
+    expect(err).toBeInstanceOf(PptrKitError);
+    expect(err.name).toBe("WorkerError");
+    expect(err.retryable).toBe(false);
+  });
+  it("honors an explicit retryable:true plus cause and context", () => {
+    const cause = new Error("worker destroyed");
+    const err = new WorkerError("eval failed", {
+      retryable: true,
+      cause,
+      context: { url: "blob:worker" },
+    });
+    expect(err.retryable).toBe(true);
+    expect(err.cause).toBe(cause);
+    expect(err.context).toEqual({ url: "blob:worker" });
   });
 });
 

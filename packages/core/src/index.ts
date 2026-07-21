@@ -11,6 +11,7 @@ export {
   ContextError,
   DownloadError,
   NetworkError,
+  WorkerError,
   CdpError,
   AbortError,
 } from "./errors.js";

@@ -115,6 +115,18 @@ export class NetworkError extends PptrKitError {
 }
 
 /**
+ * A Web/Service Worker operation failed — in-worker evaluation, or a worker
+ * lifecycle-observer consumer callback that threw. Terminal by default; the
+ * transient cases (worker destroyed/detached mid-evaluate, CDP hiccup) pass
+ * `retryable:true` explicitly at the throw site.
+ */
+export class WorkerError extends PptrKitError {
+  constructor(message: string, opts: PptrKitErrorOptions = {}) {
+    super(message, { retryable: false, ...opts });
+  }
+}
+
+/**
  * A raw Chrome DevTools Protocol operation failed (open session, send command,
  * detach). Terminal by default — a bad method name or bad params is programmer
  * error — but transient CDP failures (session detached, target closed) pass
