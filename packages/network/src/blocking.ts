@@ -1,19 +1,21 @@
 import { NetworkError } from "@technical-1/core";
 import type { HTTPRequest, Page } from "puppeteer-core";
 import type { BlockPattern } from "./types.js";
+import type { InterceptDecision } from "./interception.js";
+import { registerInterceptor, teardownIfEmpty } from "./interception.js";
 
 interface BlockingState {
+  /** Live patterns array shared with the registered interceptor closure. */
   patterns: BlockPattern[];
-  listener: (req: HTTPRequest) => Promise<void>;
+  /** Removes the blocking interceptor from the shared coordinator. */
+  dispose: () => void;
 }
 
 /**
- * Per-page registry of the blocking listener and accumulated patterns. We
- * keep the live patterns array shared with the closure so repeat
- * `blockResources` calls merge into the same listener — avoids double-
- * registration and the puppeteer-core "request already handled" error.
- *
- * Weak so the registry follows the page's lifetime (GC-clean).
+ * Per-page blocking registry. Repeat `blockResources` calls merge patterns into
+ * the SAME live array (and the same single registered interceptor) — no second
+ * interceptor, no second `setRequestInterception`. Weak so it follows the page's
+ * GC lifetime.
  */
 const STATE: WeakMap<Page, BlockingState> = new WeakMap();
 
@@ -30,15 +32,14 @@ function matches(req: HTTPRequest, patterns: readonly BlockPattern[]): boolean {
 
 /**
  * Enable request interception on `page` and abort requests matching any of
- * `patterns`. A `ResourceType` string (e.g. `"image"`, `"stylesheet"`)
- * matches the request's resource type exactly; a `RegExp` matches the
- * request URL.
+ * `patterns`. A `ResourceType` string (e.g. `"image"`, `"stylesheet"`) matches
+ * the request's resource type exactly; a `RegExp` matches the request URL.
+ * Idempotent across repeat calls — patterns merge into the live interceptor.
+ * Composes with `mockRequests` on the same page through the shared interception
+ * coordinator.
  *
- * Idempotent across repeat calls — patterns from subsequent calls merge
- * into the live listener.
- *
- * Throws `NetworkError` (`retryable:false`) when called with an empty
- * pattern list (programmer error).
+ * Throws `NetworkError` (`retryable:false`) when called with an empty pattern
+ * list (programmer error).
  */
 export async function blockResources(
   page: Page,
@@ -57,30 +58,21 @@ export async function blockResources(
   }
 
   const live: BlockPattern[] = [...patterns];
-  const listener = async (req: HTTPRequest): Promise<void> => {
-    try {
-      if (matches(req, live)) await req.abort();
-      else await req.continue();
-    } catch {
-      // Race: request was already handled by another listener — swallow.
-      // (Cross-realm safety; puppeteer-core throws on double-handle.)
-    }
-  };
-
-  await page.setRequestInterception(true);
-  page.on("request", listener);
-  STATE.set(page, { patterns: live, listener });
+  const dispose = await registerInterceptor(page, (req): InterceptDecision =>
+    matches(req, live) ? { action: "abort" } : undefined,
+  );
+  STATE.set(page, { patterns: live, dispose });
 }
 
 /**
- * Disable request interception on `page` and detach the blocking listener
- * installed by `blockResources`. Idempotent — safe to call when no
- * interception was active.
+ * Disable the blocking interceptor installed by `blockResources`. If no other
+ * interception consumer remains on `page`, request interception is turned off.
+ * Idempotent — safe when no blocking was active.
  */
 export async function unblockResources(page: Page): Promise<void> {
   const state = STATE.get(page);
   if (state === undefined) return;
-  page.off("request", state.listener);
+  state.dispose();
   STATE.delete(page);
-  await page.setRequestInterception(false);
+  await teardownIfEmpty(page);
 }
