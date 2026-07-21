@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
-import { emulateDevice, listKnownDevices } from "./emulation.js";
+import { emulateDevice, listKnownDevices, overridePermissions } from "./emulation.js";
 import { PptrKitError } from "@technical-1/core";
 import { KnownDevices } from "puppeteer-core";
-import type { Page } from "puppeteer-core";
+import type { BrowserContext, Page } from "puppeteer-core";
 
 function mockPage(overrides: Record<string, unknown> = {}): Page {
   return {
@@ -146,5 +146,106 @@ describe("listKnownDevices", () => {
     expect(names.length).toBeGreaterThan(0);
     expect(names).toContain("iPhone 15 Pro");
     expect(names).toEqual(Object.keys(KnownDevices));
+  });
+});
+
+function mockContext(overrides: Record<string, unknown> = {}): BrowserContext {
+  return {
+    overridePermissions: vi.fn().mockResolvedValue(undefined),
+    clearPermissionOverrides: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  } as unknown as BrowserContext;
+}
+
+function pageWithContext(ctx: BrowserContext, url = "https://example.com/app"): Page {
+  return {
+    browserContext: vi.fn().mockReturnValue(ctx),
+    url: vi.fn().mockReturnValue(url),
+  } as unknown as Page;
+}
+
+describe("overridePermissions", () => {
+  it("grants the listed permissions on a BrowserContext for the given origin", async () => {
+    const ctx = mockContext();
+    await overridePermissions(ctx, ["camera", "microphone"], {
+      origin: "https://example.com",
+    });
+    expect(ctx.overridePermissions).toHaveBeenCalledWith("https://example.com", [
+      "camera",
+      "microphone",
+    ]);
+    expect(ctx.overridePermissions).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves the context from a Page and defaults origin to the page origin", async () => {
+    const ctx = mockContext();
+    const page = pageWithContext(ctx, "https://shop.example.com/cart?x=1");
+    await overridePermissions(page, ["geolocation"]);
+    expect(page.browserContext).toHaveBeenCalledTimes(1);
+    expect(ctx.overridePermissions).toHaveBeenCalledWith(
+      "https://shop.example.com",
+      ["geolocation"],
+    );
+  });
+
+  it("uses an explicit origin over the page origin when both are available", async () => {
+    const ctx = mockContext();
+    const page = pageWithContext(ctx, "https://a.example.com/");
+    await overridePermissions(page, ["notifications"], { origin: "https://b.example.com" });
+    expect(ctx.overridePermissions).toHaveBeenCalledWith("https://b.example.com", [
+      "notifications",
+    ]);
+  });
+
+  it("emits DI logger step/success lines", async () => {
+    const ctx = mockContext();
+    const logger = { log: vi.fn() };
+    await overridePermissions(ctx, ["clipboard-read"], {
+      origin: "https://example.com",
+      logger,
+    });
+    expect(logger.log).toHaveBeenCalledWith(
+      "granting 1 permission(s) for https://example.com",
+      "step",
+    );
+    expect(logger.log).toHaveBeenCalledWith(
+      "granted 1 permission(s) for https://example.com",
+      "success",
+    );
+  });
+
+  it("throws ConfigError (non-retryable) for an empty permission list", async () => {
+    const ctx = mockContext();
+    await expect(
+      overridePermissions(ctx, [], { origin: "https://example.com" }),
+    ).rejects.toMatchObject({ name: "ConfigError", retryable: false });
+    expect(ctx.overridePermissions).not.toHaveBeenCalled();
+  });
+
+  it("throws ConfigError when a BrowserContext is passed without an origin", async () => {
+    const ctx = mockContext();
+    await expect(overridePermissions(ctx, ["camera"])).rejects.toMatchObject({
+      name: "ConfigError",
+      retryable: false,
+    });
+    expect(ctx.overridePermissions).not.toHaveBeenCalled();
+  });
+
+  it("throws ConfigError when the page origin cannot be derived (about:blank)", async () => {
+    const ctx = mockContext();
+    const page = pageWithContext(ctx, "about:blank");
+    await expect(overridePermissions(page, ["camera"])).rejects.toMatchObject({
+      name: "ConfigError",
+      retryable: false,
+    });
+    expect(ctx.overridePermissions).not.toHaveBeenCalled();
+  });
+
+  it("wraps an overridePermissions rejection as retryable PptrKitError with cause", async () => {
+    const boom = new Error("target closed");
+    const ctx = mockContext({ overridePermissions: vi.fn().mockRejectedValue(boom) });
+    await expect(
+      overridePermissions(ctx, ["camera"], { origin: "https://example.com" }),
+    ).rejects.toMatchObject({ name: "PptrKitError", retryable: true, cause: boom });
   });
 });
