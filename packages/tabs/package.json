@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/tabs",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Coordinate popups and new tabs: race a click against 'targetcreated' and return the settled Page with timeout + cleanup",
   "license": "MIT",
   "repository": {

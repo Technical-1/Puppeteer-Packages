@@ -1,10 +1,14 @@
-# @technical-1/pdf
+# @technical-1/dialogs
 
 ## 1.0.0
 
 ### Major Changes
 
 - Graduate the suite to its first stable release. All packages move to 1.0.0 with a committed, semver-stable public API: browser launch and a race-free pool, navigation with typed retries and gesture-triggered waits, data extraction, iframe-aware interaction, file upload, infinite scroll, keyboard shortcuts, device/viewport emulation, multi-tab/popup coordination, dialog handling, response capture and predicate event waits, session persistence, anti-detection building blocks, screenshots, PDF, downloads, and a captcha adapter interface — all sharing a typed, cross-realm-safe error hierarchy and a bring-your-own-logger contract, with puppeteer-core as a bounded peer dependency.
+
+### Minor Changes
+
+- 8c4c78c: Add `@technical-1/dialogs`: a page-lifecycle JS dialog handler. `handleDialogs(page, options)` attaches a `page.on('dialog', …)` listener that auto-responds to alert/confirm/prompt/beforeunload dialogs per a configurable accept/dismiss policy, supplies prompt text, records typed `DialogEvent`s, takes an optional DI logger, and returns a disposer. Response failures are surfaced as a retryable `PptrKitError` via an `onError` callback.
 
 ### Patch Changes
 
@@ -18,31 +22,3 @@
 - Updated dependencies [095f819]
 - Updated dependencies
   - @technical-1/core@1.0.0
-
-## 0.1.1
-
-### Patch Changes
-
-- 6ecf5eb: Clarify in each README that these are convenience wrappers — they add the suite's typed errors / injected logger / sane defaults for consistency, not new capability beyond the underlying puppeteer-core API or plugin.
-
-## 0.1.0
-
-### Minor Changes
-
-- 0d299da: Output tier: `screenshots` (timestamped/full-page/element capture helpers
-  ported from the Kanfer baseline), `pdf` (`pageToPdf` with sane defaults —
-  A4, printBackground, 1cm margins), and `downloads` (`enableDownloads` via
-  CDP `Browser.setDownloadBehavior` + `awaitDownload` filesystem polling).
-  All three declare `@technical-1/core` as a dependency and `puppeteer-core`
-  `>=22 <25` as a peer. `screenshots.screenshotElement` throws
-  `SelectorNotFoundError` (terminal); all other thrown failures are
-  `PptrKitError` with explicit `retryable` (typically `true` for CDP /
-  page-state transients; `false` for snapshot/trigger programmer errors in
-  `downloads`).
-- 55c0e59: `pageToPdf` deep-merges the `margin` per side, so a partial margin keeps the
-  unspecified sides at the 1cm default instead of dropping them to 0.
-
-### Patch Changes
-
-- Updated dependencies [1bbfebd]
-  - @technical-1/core@0.1.0

@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/captcha",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Captcha-solver adapter interface plus a reference 2captcha adapter. No bundled credentials — consumer supplies the API key.",
   "license": "MIT",
   "repository": {

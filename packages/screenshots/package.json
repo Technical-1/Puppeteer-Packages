@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/screenshots",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "Timestamped, full-page, and element screenshot helpers for Puppeteer pages.",
   "license": "MIT",
   "repository": {

@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/emulation",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Device, viewport, and mobile emulation for Puppeteer pages — KnownDevices presets, deviceScaleFactor, isMobile, hasTouch, and arbitrary viewports.",
   "license": "MIT",
   "repository": {
