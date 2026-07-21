@@ -1,6 +1,7 @@
 import { NetworkError } from "@technical-1/core";
-import type { CDPSession, Page } from "puppeteer-core";
+import type { Page } from "puppeteer-core";
 import type { ThrottleProfile } from "./types.js";
+import { evictSession, getSession } from "./cdp-session.js";
 
 /**
  * Canonical Chrome DevTools network condition presets.
@@ -41,22 +42,6 @@ export const THROTTLE_PROFILES = Object.freeze({
 export type ThrottleProfileName = keyof typeof THROTTLE_PROFILES;
 
 /**
- * One CDP session per page, reused across throttle/setOffline calls. Creating a
- * fresh session on every call (and never detaching) leaks a protocol handle per
- * invocation on long-lived pages. Weak so it follows the page's GC lifetime.
- */
-const SESSIONS: WeakMap<Page, CDPSession> = new WeakMap();
-
-async function getSession(page: Page): Promise<CDPSession> {
-  let session = SESSIONS.get(page);
-  if (session === undefined) {
-    session = await page.target().createCDPSession();
-    SESSIONS.set(page, session);
-  }
-  return session;
-}
-
-/**
  * Emulate `profile`'s network conditions on `page` via CDP. Throws
  * `NetworkError` (`retryable:true` — the failure mode is usually a closed
  * session that succeeds after a fresh page) wrapping the underlying error
@@ -71,7 +56,7 @@ export async function throttle(page: Page, profile: ThrottleProfile): Promise<vo
     // reusing a session that may have detached — otherwise a stale cached
     // session makes every subsequent call on this page fail forever, which
     // undermines the retryable:true contract below.
-    SESSIONS.delete(page);
+    evictSession(page);
     throw new NetworkError("throttle failed", { retryable: true, cause });
   }
 }
