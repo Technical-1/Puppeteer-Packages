@@ -11,10 +11,12 @@ function fakeResponse(opts: {
   headers?: Record<string, string>;
   fromCache?: boolean;
   buffer?: () => Promise<Buffer>;
+  redirectChain?: HTTPRequest[];
 } = {}): HTTPResponse {
   const req = {
     method: () => opts.method ?? "GET",
     resourceType: () => (opts.resourceType ?? "document") as ResourceType,
+    redirectChain: () => opts.redirectChain ?? [],
   } as unknown as HTTPRequest;
   return {
     url: () => opts.url ?? "https://example.com/x",
@@ -24,6 +26,15 @@ function fakeResponse(opts: {
     buffer: opts.buffer ?? (async () => Buffer.from("")),
     request: () => req,
   } as unknown as HTTPResponse;
+}
+
+// helper: a prior redirect request with its own response()/status()
+function redirectReq(url: string, status: number, method = "GET"): HTTPRequest {
+  return {
+    url: () => url,
+    method: () => method,
+    response: () => ({ status: () => status } as unknown as HTTPResponse),
+  } as unknown as HTTPRequest;
 }
 
 function pageMock() {
@@ -164,5 +175,38 @@ describe("captureResponses", () => {
     await expect(collector.responses[0]!.json()).rejects.toMatchObject({
       name: "NetworkError", retryable: false,
     });
+  });
+
+  it("records an empty redirects array for a direct (non-redirected) response", () => {
+    const page = pageMock();
+    const collector = captureResponses(page);
+    page._emit("response", fakeResponse({ url: "https://a/", status: 200 }));
+    expect(collector.responses[0]!.redirects).toEqual([]);
+  });
+
+  it("reconstructs the 301 -> 302 -> 200 hop chain from redirectChain()", () => {
+    const page = pageMock();
+    const collector = captureResponses(page);
+    page._emit("response", fakeResponse({
+      url: "https://final/",
+      status: 200,
+      redirectChain: [
+        redirectReq("https://a/", 301),
+        redirectReq("https://b/", 302),
+      ],
+    }));
+    expect(collector.responses[0]!.redirects).toEqual([
+      { url: "https://a/", method: "GET", status: 301 },
+      { url: "https://b/", method: "GET", status: 302 },
+    ]);
+    expect(collector.responses[0]!.status).toBe(200); // the final hop is the record itself
+  });
+
+  it("uses status null for a redirect hop that has no response yet", () => {
+    const page = pageMock();
+    const collector = captureResponses(page);
+    const noResp = { url: () => "https://p/", method: () => "GET", response: () => null } as unknown as HTTPRequest;
+    page._emit("response", fakeResponse({ url: "https://final/", redirectChain: [noResp] }));
+    expect(collector.responses[0]!.redirects).toEqual([{ url: "https://p/", method: "GET", status: null }]);
   });
 });
