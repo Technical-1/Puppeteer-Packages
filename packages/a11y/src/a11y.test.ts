@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { snapshotAccessibility } from "./a11y.js";
-import { PptrKitError } from "@technical-1/core";
+import { snapshotAccessibility, findByRole, findByName } from "./a11y.js";
+import { PptrKitError, ConfigError } from "@technical-1/core";
 import type { Page, SerializedAXNode } from "puppeteer-core";
 
 /** Build a mock Page whose accessibility.snapshot resolves to `tree`. */
@@ -73,5 +73,85 @@ describe("snapshotAccessibility — error wrapping", () => {
       accessibility: { snapshot: vi.fn().mockRejectedValue(boom) },
     } as unknown as Page;
     await expect(snapshotAccessibility(page2)).rejects.toBeInstanceOf(PptrKitError);
+  });
+});
+
+const tree = ax({
+  role: "RootWebArea",
+  name: "Page",
+  children: [
+    ax({ role: "button", name: "Save", children: [] }),
+    ax({
+      role: "navigation",
+      children: [
+        ax({ role: "link", name: "Home" }),
+        ax({ role: "button", name: "Menu" }),
+      ],
+    }),
+  ],
+});
+
+describe("findByRole", () => {
+  it("returns every node with the matching role in pre-order", () => {
+    const buttons = findByRole(tree, "button");
+    expect(buttons.map((n) => n.name)).toEqual(["Save", "Menu"]);
+  });
+
+  it("matches the root node itself", () => {
+    expect(findByRole(tree, "RootWebArea")).toHaveLength(1);
+  });
+
+  it("returns an empty array when nothing matches", () => {
+    expect(findByRole(tree, "heading")).toEqual([]);
+  });
+
+  it("returns an empty array for a null tree", () => {
+    expect(findByRole(null, "button")).toEqual([]);
+  });
+
+  it("handles nodes without a children array", () => {
+    expect(findByRole(ax({ role: "button", name: "Solo" }), "button")).toHaveLength(1);
+  });
+
+  it("throws a non-retryable ConfigError for an empty/blank role", () => {
+    expect(() => findByRole(tree, "")).toThrowError(ConfigError);
+    expect(() => findByRole(tree, "   ")).toThrow(
+      expect.objectContaining({ name: "ConfigError", retryable: false }),
+    );
+  });
+});
+
+const named = ax({
+  role: "RootWebArea",
+  name: "Save",
+  children: [
+    ax({ role: "button", name: "Save" }),
+    ax({ role: "link", name: "Home" }),
+    ax({ role: "img" }), // no name — must be skipped, not matched as undefined
+  ],
+});
+
+describe("findByName", () => {
+  it("returns every node whose accessible name matches, in pre-order", () => {
+    const hits = findByName(named, "Save");
+    expect(hits.map((n) => n.role)).toEqual(["RootWebArea", "button"]);
+  });
+
+  it("does not match name-less nodes", () => {
+    expect(findByName(named, "Home")).toHaveLength(1);
+  });
+
+  it("returns an empty array when nothing matches", () => {
+    expect(findByName(named, "Delete")).toEqual([]);
+  });
+
+  it("returns an empty array for a null tree", () => {
+    expect(findByName(null, "Save")).toEqual([]);
+  });
+
+  it("throws a non-retryable ConfigError for an empty/blank name", () => {
+    expect(() => findByName(named, "")).toThrow(
+      expect.objectContaining({ name: "ConfigError", retryable: false }),
+    );
   });
 });
