@@ -1,4 +1,10 @@
-import type { Browser, BrowserContext, BrowserContextOptions, Target } from "puppeteer-core";
+import type {
+  Browser,
+  BrowserContext,
+  BrowserContextOptions,
+  Permission,
+  Target,
+} from "puppeteer-core";
 import { ContextError } from "@technical-1/core";
 import type { LoggerOption } from "@technical-1/core";
 import type { IsolatedContextOptions, TargetInfo } from "./types.js";
@@ -83,6 +89,46 @@ export function listContextTargets(context: BrowserContext): TargetInfo[] {
       cause,
     });
   }
+}
+
+/**
+ * Grant `permissions` to `origin` on `context` (full-replace: Chrome auto-denies
+ * anything not listed). For per-permission granted/denied/prompt state, use
+ * puppeteer-core's `BrowserContext.setPermission` directly.
+ */
+export async function overridePermissions(
+  context: BrowserContext,
+  origin: string,
+  permissions: Permission[],
+  opts: LoggerOption = {},
+): Promise<void> {
+  opts.logger?.log(`contexts: overriding permissions for ${origin}`, "step");
+  try {
+    await context.overridePermissions(origin, permissions);
+  } catch (cause) {
+    throw new ContextError(
+      `contexts: failed to override permissions for ${origin}`,
+      { retryable: true, cause, context: { origin } },
+    );
+  }
+  opts.logger?.log(`contexts: overrode permissions for ${origin}`, "success");
+}
+
+/** Clear all permission overrides on `context`. */
+export async function clearContextPermissions(
+  context: BrowserContext,
+  opts: LoggerOption = {},
+): Promise<void> {
+  opts.logger?.log("contexts: clearing permission overrides", "step");
+  try {
+    await context.clearPermissionOverrides();
+  } catch (cause) {
+    throw new ContextError("contexts: failed to clear permission overrides", {
+      retryable: true,
+      cause,
+    });
+  }
+  opts.logger?.log("contexts: cleared permission overrides", "success");
 }
 
 export { closeQuietly };

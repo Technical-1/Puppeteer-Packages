@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import type { Browser, BrowserContext, Target } from "puppeteer-core";
 import { createIsolatedContext, listContextTargets } from "./context.js";
+import { overridePermissions, clearContextPermissions } from "./context.js";
 
 /** Minimal BrowserContext stub. */
 function contextMock(over: Partial<Record<string, unknown>> = {}): BrowserContext {
@@ -137,5 +138,49 @@ describe("listContextTargets", () => {
     expect(() => listContextTargets(ctx)).toThrowError(
       expect.objectContaining({ name: "ContextError", retryable: true }),
     );
+  });
+});
+
+describe("overridePermissions", () => {
+  it("delegates to context.overridePermissions and logs success", async () => {
+    const ctx = contextMock();
+    const log = vi.fn();
+    await overridePermissions(ctx, "https://a.com", ["geolocation"], { logger: { log } });
+    expect(ctx.overridePermissions).toHaveBeenCalledWith("https://a.com", ["geolocation"]);
+    expect(log).toHaveBeenCalledWith(
+      "contexts: overrode permissions for https://a.com",
+      "success",
+    );
+  });
+
+  it("wraps a rejection as retryable ContextError with the origin", async () => {
+    const ctx = contextMock({
+      overridePermissions: vi.fn().mockRejectedValue(new Error("nope")),
+    });
+    await expect(
+      overridePermissions(ctx, "https://a.com", ["camera"]),
+    ).rejects.toMatchObject({
+      name: "ContextError",
+      retryable: true,
+      context: { origin: "https://a.com" },
+    });
+  });
+});
+
+describe("clearContextPermissions", () => {
+  it("delegates to context.clearPermissionOverrides", async () => {
+    const ctx = contextMock();
+    await clearContextPermissions(ctx);
+    expect(ctx.clearPermissionOverrides).toHaveBeenCalledTimes(1);
+  });
+
+  it("wraps a rejection as retryable ContextError", async () => {
+    const ctx = contextMock({
+      clearPermissionOverrides: vi.fn().mockRejectedValue(new Error("boom")),
+    });
+    await expect(clearContextPermissions(ctx)).rejects.toMatchObject({
+      name: "ContextError",
+      retryable: true,
+    });
   });
 });
