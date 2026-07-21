@@ -1,7 +1,14 @@
 import { ConfigError, PptrKitError } from "@technical-1/core";
 import type { LoggerOption } from "@technical-1/core";
 import { KnownDevices } from "puppeteer-core";
-import type { BrowserContext, Device, Page, Permission, Viewport } from "puppeteer-core";
+import type {
+  BrowserContext,
+  Device,
+  GeolocationOptions,
+  Page,
+  Permission,
+  Viewport,
+} from "puppeteer-core";
 
 /** Names of the device presets shipped by the installed `puppeteer-core`. */
 export type KnownDeviceName = keyof typeof KnownDevices;
@@ -189,4 +196,89 @@ export async function overridePermissions(
     });
   }
   logger?.log(`granted ${permissions.length} permission(s) for ${resolvedOrigin}`, "success");
+}
+
+/** Coordinates for {@link setGeolocation}. */
+export interface GeoCoordinates {
+  /** Latitude, must be within -90..90. */
+  latitude: number;
+  /** Longitude, must be within -180..180. */
+  longitude: number;
+  /** Accuracy in meters, must be >= 0 when provided. */
+  accuracy?: number;
+}
+
+/** Options for {@link setGeolocation}. */
+export interface SetGeolocationOptions extends LoggerOption {
+  /**
+   * When `true`, grants the `geolocation` permission (via {@link overridePermissions}) for
+   * the page's origin before setting the coordinates. `page.setGeolocation` requires the
+   * permission to already be granted, or it has no visible effect.
+   */
+  grantPermission?: boolean;
+  /**
+   * The origin to grant the `geolocation` permission for when `grantPermission` is `true`.
+   * Defaults to the page's current origin (derived from `page.url()`) if omitted.
+   */
+  origin?: string;
+}
+
+/** Validate that `coords` are within the ranges accepted by `page.setGeolocation`. */
+function validateCoords(coords: GeoCoordinates): void {
+  const { latitude, longitude, accuracy } = coords;
+  const bad =
+    !Number.isFinite(latitude) ||
+    latitude < -90 ||
+    latitude > 90 ||
+    !Number.isFinite(longitude) ||
+    longitude < -180 ||
+    longitude > 180 ||
+    (accuracy !== undefined && (!Number.isFinite(accuracy) || accuracy < 0));
+  if (bad) {
+    throw new ConfigError(
+      "setGeolocation: latitude must be -90..90, longitude -180..180, accuracy >= 0",
+      { context: { latitude, longitude, accuracy } },
+    );
+  }
+}
+
+/**
+ * Set the page's geolocation coordinates.
+ *
+ * `page.setGeolocation` requires the `geolocation` permission to already be granted for the
+ * page's origin — pass `grantPermission: true` to grant it (via {@link overridePermissions})
+ * before setting the coordinates, or call {@link overridePermissions} yourself beforehand.
+ *
+ * Throws `ConfigError` (`retryable:false`) when `latitude`, `longitude`, or `accuracy` are
+ * out of range (or non-finite). Wraps a `page.setGeolocation` rejection as `PptrKitError`
+ * `retryable:true` carrying the original as `cause`.
+ */
+export async function setGeolocation(
+  page: Page,
+  coords: GeoCoordinates,
+  options: SetGeolocationOptions = {},
+): Promise<void> {
+  const { logger, grantPermission = false, origin } = options;
+  validateCoords(coords);
+
+  if (grantPermission) {
+    await overridePermissions(page, ["geolocation"], { origin, logger });
+  }
+
+  const geo: GeolocationOptions =
+    coords.accuracy === undefined
+      ? { latitude: coords.latitude, longitude: coords.longitude }
+      : { latitude: coords.latitude, longitude: coords.longitude, accuracy: coords.accuracy };
+
+  logger?.log(`setting geolocation ${coords.latitude},${coords.longitude}`, "step");
+  try {
+    await page.setGeolocation(geo);
+  } catch (cause) {
+    throw new PptrKitError("setGeolocation: page.setGeolocation failed", {
+      retryable: true,
+      cause,
+      context: { latitude: coords.latitude, longitude: coords.longitude },
+    });
+  }
+  logger?.log(`geolocation set ${coords.latitude},${coords.longitude}`, "success");
 }

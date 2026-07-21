@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { emulateDevice, listKnownDevices, overridePermissions } from "./emulation.js";
+import { emulateDevice, listKnownDevices, overridePermissions, setGeolocation } from "./emulation.js";
 import { PptrKitError } from "@technical-1/core";
 import { KnownDevices } from "puppeteer-core";
 import type { BrowserContext, Page } from "puppeteer-core";
@@ -247,5 +247,89 @@ describe("overridePermissions", () => {
     await expect(
       overridePermissions(ctx, ["camera"], { origin: "https://example.com" }),
     ).rejects.toMatchObject({ name: "PptrKitError", retryable: true, cause: boom });
+  });
+});
+
+function geoPage(ctx?: BrowserContext, url = "https://maps.example.com/"): Page {
+  return {
+    setGeolocation: vi.fn().mockResolvedValue(undefined),
+    browserContext: vi.fn().mockReturnValue(ctx ?? mockContext()),
+    url: vi.fn().mockReturnValue(url),
+  } as unknown as Page;
+}
+
+describe("setGeolocation", () => {
+  it("sets the coordinates via page.setGeolocation", async () => {
+    const page = geoPage();
+    await setGeolocation(page, { latitude: 59.95, longitude: 30.31667, accuracy: 10 });
+    expect(page.setGeolocation).toHaveBeenCalledWith({
+      latitude: 59.95,
+      longitude: 30.31667,
+      accuracy: 10,
+    });
+    expect(page.setGeolocation).toHaveBeenCalledTimes(1);
+  });
+
+  it("omits accuracy when not provided", async () => {
+    const page = geoPage();
+    await setGeolocation(page, { latitude: 0, longitude: 0 });
+    expect(page.setGeolocation).toHaveBeenCalledWith({ latitude: 0, longitude: 0 });
+  });
+
+  it("emits DI logger step/success lines", async () => {
+    const page = geoPage();
+    const logger = { log: vi.fn() };
+    await setGeolocation(page, { latitude: 12.5, longitude: -70.1 }, { logger });
+    expect(logger.log).toHaveBeenCalledWith("setting geolocation 12.5,-70.1", "step");
+    expect(logger.log).toHaveBeenCalledWith("geolocation set 12.5,-70.1", "success");
+  });
+
+  it("grants the geolocation permission first when grantPermission is true", async () => {
+    const ctx = mockContext();
+    const page = geoPage(ctx, "https://maps.example.com/here");
+    await setGeolocation(page, { latitude: 1, longitude: 2 }, { grantPermission: true });
+    expect(ctx.overridePermissions).toHaveBeenCalledWith("https://maps.example.com", [
+      "geolocation",
+    ]);
+    // permission granted before coordinates are set
+    const grantOrder = (ctx.overridePermissions as unknown as { mock: { invocationCallOrder: number[] } })
+      .mock.invocationCallOrder[0]!;
+    const setOrder = (page.setGeolocation as unknown as { mock: { invocationCallOrder: number[] } })
+      .mock.invocationCallOrder[0]!;
+    expect(grantOrder).toBeLessThan(setOrder);
+  });
+
+  it("does not grant any permission when grantPermission is false/omitted", async () => {
+    const ctx = mockContext();
+    const page = geoPage(ctx);
+    await setGeolocation(page, { latitude: 1, longitude: 2 });
+    expect(ctx.overridePermissions).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["latitude too high", { latitude: 91, longitude: 0 }],
+    ["latitude too low", { latitude: -91, longitude: 0 }],
+    ["longitude too high", { latitude: 0, longitude: 181 }],
+    ["longitude too low", { latitude: 0, longitude: -181 }],
+    ["negative accuracy", { latitude: 0, longitude: 0, accuracy: -1 }],
+    ["NaN latitude", { latitude: Number.NaN, longitude: 0 }],
+  ])("throws ConfigError for %s", async (_label, coords) => {
+    const page = geoPage();
+    await expect(setGeolocation(page, coords)).rejects.toMatchObject({
+      name: "ConfigError",
+      retryable: false,
+    });
+    expect(page.setGeolocation).not.toHaveBeenCalled();
+  });
+
+  it("wraps a setGeolocation rejection as retryable PptrKitError with cause", async () => {
+    const boom = new Error("session detached");
+    const page = geoPage();
+    (page.setGeolocation as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(boom);
+    await expect(setGeolocation(page, { latitude: 1, longitude: 2 })).rejects.toMatchObject({
+      name: "PptrKitError",
+      retryable: true,
+      cause: boom,
+    });
   });
 });
