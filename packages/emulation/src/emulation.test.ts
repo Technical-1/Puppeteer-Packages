@@ -1,8 +1,14 @@
 import { describe, it, expect, vi } from "vitest";
-import { emulateDevice, listKnownDevices } from "./emulation.js";
+import {
+  emulateDevice,
+  emulateMedia,
+  listKnownDevices,
+  overridePermissions,
+  setGeolocation,
+} from "./emulation.js";
 import { PptrKitError } from "@technical-1/core";
 import { KnownDevices } from "puppeteer-core";
-import type { Page } from "puppeteer-core";
+import type { BrowserContext, Page } from "puppeteer-core";
 
 function mockPage(overrides: Record<string, unknown> = {}): Page {
   return {
@@ -146,5 +152,277 @@ describe("listKnownDevices", () => {
     expect(names.length).toBeGreaterThan(0);
     expect(names).toContain("iPhone 15 Pro");
     expect(names).toEqual(Object.keys(KnownDevices));
+  });
+});
+
+function mockContext(overrides: Record<string, unknown> = {}): BrowserContext {
+  return {
+    overridePermissions: vi.fn().mockResolvedValue(undefined),
+    clearPermissionOverrides: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  } as unknown as BrowserContext;
+}
+
+function pageWithContext(ctx: BrowserContext, url = "https://example.com/app"): Page {
+  return {
+    browserContext: vi.fn().mockReturnValue(ctx),
+    url: vi.fn().mockReturnValue(url),
+  } as unknown as Page;
+}
+
+describe("overridePermissions", () => {
+  it("grants the listed permissions on a BrowserContext for the given origin", async () => {
+    const ctx = mockContext();
+    await overridePermissions(ctx, ["camera", "microphone"], {
+      origin: "https://example.com",
+    });
+    expect(ctx.overridePermissions).toHaveBeenCalledWith("https://example.com", [
+      "camera",
+      "microphone",
+    ]);
+    expect(ctx.overridePermissions).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves the context from a Page and defaults origin to the page origin", async () => {
+    const ctx = mockContext();
+    const page = pageWithContext(ctx, "https://shop.example.com/cart?x=1");
+    await overridePermissions(page, ["geolocation"]);
+    expect(page.browserContext).toHaveBeenCalledTimes(1);
+    expect(ctx.overridePermissions).toHaveBeenCalledWith(
+      "https://shop.example.com",
+      ["geolocation"],
+    );
+  });
+
+  it("uses an explicit origin over the page origin when both are available", async () => {
+    const ctx = mockContext();
+    const page = pageWithContext(ctx, "https://a.example.com/");
+    await overridePermissions(page, ["notifications"], { origin: "https://b.example.com" });
+    expect(ctx.overridePermissions).toHaveBeenCalledWith("https://b.example.com", [
+      "notifications",
+    ]);
+  });
+
+  it("emits DI logger step/success lines", async () => {
+    const ctx = mockContext();
+    const logger = { log: vi.fn() };
+    await overridePermissions(ctx, ["clipboard-read"], {
+      origin: "https://example.com",
+      logger,
+    });
+    expect(logger.log).toHaveBeenCalledWith(
+      "granting 1 permission(s) for https://example.com",
+      "step",
+    );
+    expect(logger.log).toHaveBeenCalledWith(
+      "granted 1 permission(s) for https://example.com",
+      "success",
+    );
+  });
+
+  it("throws ConfigError (non-retryable) for an empty permission list", async () => {
+    const ctx = mockContext();
+    await expect(
+      overridePermissions(ctx, [], { origin: "https://example.com" }),
+    ).rejects.toMatchObject({ name: "ConfigError", retryable: false });
+    expect(ctx.overridePermissions).not.toHaveBeenCalled();
+  });
+
+  it("throws ConfigError when a BrowserContext is passed without an origin", async () => {
+    const ctx = mockContext();
+    await expect(overridePermissions(ctx, ["camera"])).rejects.toMatchObject({
+      name: "ConfigError",
+      retryable: false,
+    });
+    expect(ctx.overridePermissions).not.toHaveBeenCalled();
+  });
+
+  it("throws ConfigError when the page origin cannot be derived (about:blank)", async () => {
+    const ctx = mockContext();
+    const page = pageWithContext(ctx, "about:blank");
+    await expect(overridePermissions(page, ["camera"])).rejects.toMatchObject({
+      name: "ConfigError",
+      retryable: false,
+    });
+    expect(ctx.overridePermissions).not.toHaveBeenCalled();
+  });
+
+  it("wraps an overridePermissions rejection as retryable PptrKitError with cause", async () => {
+    const boom = new Error("target closed");
+    const ctx = mockContext({ overridePermissions: vi.fn().mockRejectedValue(boom) });
+    await expect(
+      overridePermissions(ctx, ["camera"], { origin: "https://example.com" }),
+    ).rejects.toMatchObject({ name: "PptrKitError", retryable: true, cause: boom });
+  });
+});
+
+function geoPage(ctx?: BrowserContext, url = "https://maps.example.com/"): Page {
+  return {
+    setGeolocation: vi.fn().mockResolvedValue(undefined),
+    browserContext: vi.fn().mockReturnValue(ctx ?? mockContext()),
+    url: vi.fn().mockReturnValue(url),
+  } as unknown as Page;
+}
+
+describe("setGeolocation", () => {
+  it("sets the coordinates via page.setGeolocation", async () => {
+    const page = geoPage();
+    await setGeolocation(page, { latitude: 59.95, longitude: 30.31667, accuracy: 10 });
+    expect(page.setGeolocation).toHaveBeenCalledWith({
+      latitude: 59.95,
+      longitude: 30.31667,
+      accuracy: 10,
+    });
+    expect(page.setGeolocation).toHaveBeenCalledTimes(1);
+  });
+
+  it("omits accuracy when not provided", async () => {
+    const page = geoPage();
+    await setGeolocation(page, { latitude: 0, longitude: 0 });
+    expect(page.setGeolocation).toHaveBeenCalledWith({ latitude: 0, longitude: 0 });
+  });
+
+  it("emits DI logger step/success lines", async () => {
+    const page = geoPage();
+    const logger = { log: vi.fn() };
+    await setGeolocation(page, { latitude: 12.5, longitude: -70.1 }, { logger });
+    expect(logger.log).toHaveBeenCalledWith("setting geolocation 12.5,-70.1", "step");
+    expect(logger.log).toHaveBeenCalledWith("geolocation set 12.5,-70.1", "success");
+  });
+
+  it("grants the geolocation permission first when grantPermission is true", async () => {
+    const ctx = mockContext();
+    const page = geoPage(ctx, "https://maps.example.com/here");
+    await setGeolocation(page, { latitude: 1, longitude: 2 }, { grantPermission: true });
+    expect(ctx.overridePermissions).toHaveBeenCalledWith("https://maps.example.com", [
+      "geolocation",
+    ]);
+    // permission granted before coordinates are set
+    const grantOrder = (ctx.overridePermissions as unknown as { mock: { invocationCallOrder: number[] } })
+      .mock.invocationCallOrder[0]!;
+    const setOrder = (page.setGeolocation as unknown as { mock: { invocationCallOrder: number[] } })
+      .mock.invocationCallOrder[0]!;
+    expect(grantOrder).toBeLessThan(setOrder);
+  });
+
+  it("does not grant any permission when grantPermission is false/omitted", async () => {
+    const ctx = mockContext();
+    const page = geoPage(ctx);
+    await setGeolocation(page, { latitude: 1, longitude: 2 });
+    expect(ctx.overridePermissions).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["latitude too high", { latitude: 91, longitude: 0 }],
+    ["latitude too low", { latitude: -91, longitude: 0 }],
+    ["longitude too high", { latitude: 0, longitude: 181 }],
+    ["longitude too low", { latitude: 0, longitude: -181 }],
+    ["negative accuracy", { latitude: 0, longitude: 0, accuracy: -1 }],
+    ["NaN latitude", { latitude: Number.NaN, longitude: 0 }],
+  ])("throws ConfigError for %s", async (_label, coords) => {
+    const page = geoPage();
+    await expect(setGeolocation(page, coords)).rejects.toMatchObject({
+      name: "ConfigError",
+      retryable: false,
+    });
+    expect(page.setGeolocation).not.toHaveBeenCalled();
+  });
+
+  it("wraps a setGeolocation rejection as retryable PptrKitError with cause", async () => {
+    const boom = new Error("session detached");
+    const page = geoPage();
+    (page.setGeolocation as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(boom);
+    await expect(setGeolocation(page, { latitude: 1, longitude: 2 })).rejects.toMatchObject({
+      name: "PptrKitError",
+      retryable: true,
+      cause: boom,
+    });
+  });
+});
+
+function mediaPage(overrides: Record<string, unknown> = {}): Page {
+  return {
+    emulateMediaType: vi.fn().mockResolvedValue(undefined),
+    emulateMediaFeatures: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  } as unknown as Page;
+}
+
+describe("emulateMedia", () => {
+  it("emulates a media type via emulateMediaType and no features", async () => {
+    const page = mediaPage();
+    await emulateMedia(page, { mediaType: "print" });
+    expect(page.emulateMediaType).toHaveBeenCalledWith("print");
+    expect(page.emulateMediaFeatures).not.toHaveBeenCalled();
+  });
+
+  it("maps colorScheme/reducedMotion/forcedColors/colorGamut to media features", async () => {
+    const page = mediaPage();
+    await emulateMedia(page, {
+      colorScheme: "dark",
+      reducedMotion: "reduce",
+      forcedColors: "active",
+      colorGamut: "p3",
+    });
+    expect(page.emulateMediaFeatures).toHaveBeenCalledWith([
+      { name: "prefers-color-scheme", value: "dark" },
+      { name: "prefers-reduced-motion", value: "reduce" },
+      { name: "forced-colors", value: "active" },
+      { name: "color-gamut", value: "p3" },
+    ]);
+    expect(page.emulateMediaType).not.toHaveBeenCalled();
+  });
+
+  it("applies both media type and features when both are provided", async () => {
+    const page = mediaPage();
+    await emulateMedia(page, { mediaType: "screen", colorScheme: "light" });
+    expect(page.emulateMediaType).toHaveBeenCalledWith("screen");
+    expect(page.emulateMediaFeatures).toHaveBeenCalledWith([
+      { name: "prefers-color-scheme", value: "light" },
+    ]);
+  });
+
+  it("clears the media type when mediaType is null", async () => {
+    const page = mediaPage();
+    await emulateMedia(page, { mediaType: null });
+    expect(page.emulateMediaType).toHaveBeenCalledWith(undefined);
+  });
+
+  it("emits DI logger step/success lines", async () => {
+    const page = mediaPage();
+    const logger = { log: vi.fn() };
+    await emulateMedia(page, { colorScheme: "dark" }, { logger });
+    expect(logger.log).toHaveBeenCalledWith("emulating media", "step");
+    expect(logger.log).toHaveBeenCalledWith("media emulated", "success");
+  });
+
+  it("throws ConfigError when the media spec is empty", async () => {
+    const page = mediaPage();
+    await expect(emulateMedia(page, {})).rejects.toMatchObject({
+      name: "ConfigError",
+      retryable: false,
+    });
+    expect(page.emulateMediaType).not.toHaveBeenCalled();
+    expect(page.emulateMediaFeatures).not.toHaveBeenCalled();
+  });
+
+  it("wraps an emulateMediaFeatures rejection as retryable PptrKitError with cause", async () => {
+    const boom = new Error("target closed");
+    const page = mediaPage({ emulateMediaFeatures: vi.fn().mockRejectedValue(boom) });
+    await expect(emulateMedia(page, { colorScheme: "dark" })).rejects.toMatchObject({
+      name: "PptrKitError",
+      retryable: true,
+      cause: boom,
+    });
+  });
+
+  it("wraps an emulateMediaType rejection as retryable PptrKitError with cause", async () => {
+    const boom = new Error("target closed");
+    const page = mediaPage({ emulateMediaType: vi.fn().mockRejectedValue(boom) });
+    await expect(emulateMedia(page, { mediaType: "print" })).rejects.toMatchObject({
+      name: "PptrKitError",
+      retryable: true,
+      cause: boom,
+    });
   });
 });

@@ -43,13 +43,52 @@ A `page.emulate` / `page.setViewport` rejection is wrapped as `PptrKitError` wit
 sync with the live binary, or to randomize UA/locale/timezone, compose with
 `@technical-1/fingerprint`.
 
-## Scope (v0.x)
+## Overrides
 
-This package covers device / viewport / mobile emulation only. The override axes —
-**permissions**, **geolocation**, **media features / media type**, and **CPU throttling** —
-are intentionally **out of scope for 0.x** and are planned for the 1.x line. The
-`EmulateDeviceOptions` interface is the extension point for those additions; nothing today
-touches those CDP domains.
+Beyond device/viewport emulation, this package ships three standalone override functions —
+`overridePermissions`, `setGeolocation`, and `emulateMedia`. Each is a typed-error,
+step-logging function following the same conventions as `emulateDevice`.
+
+```ts
+import { overridePermissions, setGeolocation, emulateMedia } from "@technical-1/emulation";
+
+// Grant permissions (camera/mic/geolocation/notifications/clipboard) on a page's context
+await overridePermissions(page, ["geolocation", "notifications"]);
+
+// Set coordinates — geolocation requires the permission, so grant + set together:
+await setGeolocation(page, { latitude: 48.8584, longitude: 2.2945, accuracy: 5 }, {
+  grantPermission: true,
+});
+
+// Emulate dark mode + print media
+await emulateMedia(page, { colorScheme: "dark", reducedMotion: "reduce" });
+await emulateMedia(page, { mediaType: "print" }); // e.g. before @technical-1/pdf
+```
+
+- **`overridePermissions(target, permissions, options?)`** — grants a set of browser
+  permissions on a `BrowserContext` or on the context owning a `Page`. Pass a `BrowserContext`
+  with a required `origin`, or a `Page`, whose origin defaults to its current URL when
+  omitted. Throws `ConfigError` (`retryable: false`) for an empty `permissions` list, a
+  missing `origin` when targeting a `BrowserContext`, or an origin that can't be derived from
+  the page (e.g. `about:blank`). A rejection from the underlying call is wrapped as
+  `PptrKitError` (`retryable: true`).
+
+  This wraps puppeteer-core's `BrowserContext.overridePermissions`, which the types mark
+  deprecated in favor of `setPermission`. The wrapper is intentional for the grant-a-set
+  ergonomics; callers needing per-descriptor state control can use `setPermission` directly.
+
+- **`setGeolocation(page, coords, options?)`** — sets range-validated coordinates
+  (`latitude` -90..90, `longitude` -180..180, `accuracy` >= 0). `page.setGeolocation`
+  requires the `geolocation` permission to already be granted, or it has no visible effect —
+  pass `grantPermission: true` to grant it (via `overridePermissions`) before setting the
+  coordinates. Throws `ConfigError` (`retryable: false`) for out-of-range/non-finite values.
+
+- **`emulateMedia(page, media, options?)`** — emulates CSS media type (`page.emulateMediaType`)
+  and/or media features (`page.emulateMediaFeatures`): `prefers-color-scheme`,
+  `prefers-reduced-motion`, `forced-colors`, `color-gamut`. Throws `ConfigError`
+  (`retryable: false`) when `media` provides neither a `mediaType` key nor any feature.
+
+CPU throttling remains out of scope for this package.
 
 ## Install
 
