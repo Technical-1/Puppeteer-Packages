@@ -1,5 +1,23 @@
 # @technical-1/emulation
 
+## 1.1.0
+
+### Minor Changes
+
+- 56ab327: Add permission, geolocation, and media override functions: `overridePermissions`
+  (grant camera/mic/geolocation/notifications/clipboard on a page's or context's origin),
+  `setGeolocation` (range-validated coordinates with an optional `grantPermission`
+  convenience), and `emulateMedia` (`prefers-color-scheme`, `prefers-reduced-motion`,
+  `forced-colors`, `color-gamut`, and media type). Each is a typed-error, step-logging
+  function following the existing `emulateDevice` conventions.
+
+### Patch Changes
+
+- Updated dependencies [c1b1c0c]
+- Updated dependencies [122c871]
+- Updated dependencies [34f2973]
+  - @technical-1/core@1.1.0
+
 ## 1.0.0
 
 ### Major Changes

@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/tracing",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "DevTools performance tracing for Puppeteer pages — traceRun() starts a trace, runs your function, and always stops it, returning the trace buffer (Uint8Array) with optional path write.",
   "license": "MIT",
   "repository": {

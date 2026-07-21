@@ -1,5 +1,18 @@
 # @technical-1/interaction-helpers
 
+## 1.1.0
+
+### Minor Changes
+
+- 67642c1: Add `waitForFunction` (typed-timeout in-page predicate wait, `TimeoutError` on timeout) and `readClipboard` / `writeClipboard` (grant the clipboard permission on the page origin and read/write via `navigator.clipboard`; `ConfigError` on a non-secure origin). Both accept an optional injected `logger`.
+
+### Patch Changes
+
+- Updated dependencies [c1b1c0c]
+- Updated dependencies [122c871]
+- Updated dependencies [34f2973]
+  - @technical-1/core@1.1.0
+
 ## 1.0.0
 
 ### Major Changes

@@ -1,5 +1,18 @@
 # @technical-1/core
 
+## 1.1.0
+
+### Minor Changes
+
+- c1b1c0c: Add `ContextError` — the typed discriminant for BrowserContext lifecycle
+  failures (create/close/targets/permission override), used by
+  `@technical-1/contexts`.
+- 122c871: Add `CdpError`, a terminal-by-default `PptrKitError` discriminant for raw Chrome
+  DevTools Protocol failures, consumed by the new `@technical-1/cdp` package.
+- 34f2973: Add `WorkerError`, a typed discriminant for Web/Service Worker evaluation and
+  lifecycle failures (terminal by default; transient callers pass
+  `retryable:true`). Discriminate by `err.name === "WorkerError"`.
+
 ## 1.0.0
 
 ### Major Changes

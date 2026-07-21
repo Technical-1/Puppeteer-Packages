@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/workers",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Web/Service Worker awareness for Puppeteer pages: enumerate workers, evaluate inside a worker, and observe worker lifecycle with typed events and a DI logger.",
   "license": "MIT",
   "repository": {
@@ -10,12 +10,22 @@
   },
   "type": "module",
   "sideEffects": false,
-  "engines": { "node": ">=18" },
-  "files": ["dist"],
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
-      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "main": "./dist/index.cjs",
@@ -27,8 +37,16 @@
     "lint": "eslint src",
     "test": "vitest run"
   },
-  "dependencies": { "@technical-1/core": "workspace:^" },
-  "peerDependencies": { "puppeteer-core": ">=22 <25" },
-  "devDependencies": { "puppeteer-core": "^24.4.0" },
-  "publishConfig": { "access": "public" }
+  "dependencies": {
+    "@technical-1/core": "workspace:^"
+  },
+  "peerDependencies": {
+    "puppeteer-core": ">=22 <25"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.4.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }
