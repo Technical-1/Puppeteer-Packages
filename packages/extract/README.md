@@ -19,3 +19,26 @@ const titles = await extractAll(page, "h2.title");
 const rows = await extractTable(page, "table#data");
 const row = await extractSchema(page, { name: ".name", price: ".price" });
 ```
+
+## Shadow-DOM piercing
+
+Every extractor takes an optional `{ pierceShadow?: boolean }`. Default `false` = today's `document.querySelector(All)` (fast, no shadow traversal). `true` recurses through **open** shadow roots. Note: **closed** shadow roots are invisible to any script and cannot be pierced; `extractTable` piercing locates the table root only (cells within a nested-shadow table are out of scope). Example:
+
+```ts
+const label = await extractText(page, "span.price", { pierceShadow: true });
+const items = await extractAll(page, "product-card .title", { pierceShadow: true });
+```
+
+## Pagination
+
+`extractPaginated(page, { nextSelector, extractFn, maxPages, settleMs })` runs `extractFn` per page, clicks `nextSelector`, waits `settleMs`, and stops when the next control is gone or `maxPages` is hit. Document: a missing next control **ends the loop** (not an error — consistent with the tolerant contract); the `nextSelector` should match only an **active** next control (sites typically remove/hide it on the last page); `maxPages` defaults to 50 and is a safety bound; a click failure surfaces as a retryable `PptrKitError`. Example:
+
+```ts
+const all = await extractPaginated(page, {
+  nextSelector: "a.pagination-next",
+  extractFn: (p) => extractAll(p, "li.result .title"),
+  maxPages: 20,
+});
+```
+
+Note the DI logger is accepted here (`logger`) — the tolerant extractors do not log; only this orchestrator does.
