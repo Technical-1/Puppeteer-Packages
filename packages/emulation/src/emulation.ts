@@ -24,11 +24,9 @@ export type KnownDeviceName = keyof typeof KnownDevices;
 export type EmulationTarget = KnownDeviceName | Device | Viewport;
 
 /**
- * Options for {@link emulateDevice}.
- *
- * This is the extension point for the 1.x override axes (permissions, geolocation,
- * media features/type, CPU throttling) — deferred to Plan 22. Do NOT add those fields
- * in the 0.x line; they belong to a separate, opt-in surface.
+ * Options for {@link emulateDevice}. The override axes (permissions, geolocation, media)
+ * ship as separate functions — {@link overridePermissions}, {@link setGeolocation},
+ * {@link emulateMedia}.
  */
 export interface EmulateDeviceOptions extends LoggerOption {}
 
