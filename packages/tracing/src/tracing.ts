@@ -41,7 +41,17 @@ export async function traceRun<T>(
   if (screenshots !== undefined) tracingOptions.screenshots = screenshots;
   if (path !== undefined) tracingOptions.path = path;
 
-  await page.tracing.start(tracingOptions);
+  logger?.log(`starting tracing${path ? ` → ${path}` : ""}`, "step");
+
+  try {
+    await page.tracing.start(tracingOptions);
+  } catch (cause) {
+    throw new PptrKitError("traceRun: tracing.start failed", {
+      retryable: true,
+      cause,
+      context: path !== undefined ? { path } : {},
+    });
+  }
 
   let value: T;
   let buffer: Uint8Array | undefined;
@@ -75,6 +85,8 @@ export async function traceRun<T>(
       retryable: true,
     });
   }
+  logger?.log(`trace captured (${buffer.length} bytes)`, "success");
+
   const result: TraceResult<T> = { value: value!, trace: buffer };
   if (path !== undefined) result.path = path;
   return result;

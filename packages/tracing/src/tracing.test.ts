@@ -16,7 +16,8 @@ function pageMock(
 } {
   const start = vi.fn(over.startImpl ?? (async () => {}));
   const stop = vi.fn(
-    over.stopImpl ?? (async () => over.stopValue ?? new Uint8Array([1, 2, 3]))
+    over.stopImpl ??
+      (async () => ("stopValue" in over ? over.stopValue : new Uint8Array([1, 2, 3])))
   );
   const page = { tracing: { start, stop } } as unknown as Page;
   return { page, start, stop };
@@ -107,5 +108,80 @@ describe("traceRun — guaranteed stop", () => {
       )
     ).rejects.toBe(boom);
     expect(warn).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("traceRun — option mapping", () => {
+  it("passes categories, screenshots, and path to tracing.start", async () => {
+    const { page, start } = pageMock();
+    await traceRun(page, async () => 0, {
+      categories: ["devtools.timeline", "disabled-by-default-v8.cpu_profiler"],
+      screenshots: true,
+      path: "/tmp/trace.json",
+    });
+    expect(start).toHaveBeenCalledWith({
+      categories: ["devtools.timeline", "disabled-by-default-v8.cpu_profiler"],
+      screenshots: true,
+      path: "/tmp/trace.json",
+    });
+  });
+
+  it("omits unset fields from the TracingOptions (no undefined keys)", async () => {
+    const { page, start } = pageMock();
+    await traceRun(page, async () => 0);
+    expect(start).toHaveBeenCalledWith({});
+  });
+
+  it("echoes path back in the result when supplied", async () => {
+    const { page } = pageMock();
+    const result = await traceRun(page, async () => 0, { path: "/tmp/t.json" });
+    expect(result.path).toBe("/tmp/t.json");
+  });
+
+  it("emits step and success log lines through the DI logger", async () => {
+    const log = vi.fn();
+    const { page } = pageMock();
+    await traceRun(page, async () => 0, { logger: { log } });
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("tracing"), "step");
+    expect(log).toHaveBeenCalledWith(expect.any(String), "success");
+  });
+});
+
+describe("traceRun — error wrapping", () => {
+  it("wraps a tracing.start rejection as retryable PptrKitError and skips fn/stop", async () => {
+    const startCause = new Error("already tracing");
+    const fn = vi.fn(async () => 0);
+    const { page, stop } = pageMock({
+      startImpl: async () => {
+        throw startCause;
+      },
+    });
+
+    const err = await traceRun(page, fn).catch((e: unknown) => e);
+    expect((err as { name: string }).name).toBe("PptrKitError");
+    expect((err as { retryable: boolean }).retryable).toBe(true);
+    expect((err as { cause?: unknown }).cause).toBe(startCause);
+    expect(fn).not.toHaveBeenCalled();
+    expect(stop).not.toHaveBeenCalled();
+  });
+
+  it("throws retryable PptrKitError when stop resolves undefined", async () => {
+    const { page } = pageMock({ stopValue: undefined });
+    const err = await traceRun(page, async () => 0).catch((e: unknown) => e);
+    expect((err as { name: string }).name).toBe("PptrKitError");
+    expect((err as { retryable: boolean }).retryable).toBe(true);
+  });
+
+  it("wraps a stop rejection (fn succeeded) as retryable PptrKitError with cause", async () => {
+    const stopCause = new Error("stop exploded");
+    const { page } = pageMock({
+      stopImpl: async () => {
+        throw stopCause;
+      },
+    });
+    const err = await traceRun(page, async () => 0).catch((e: unknown) => e);
+    expect((err as { name: string }).name).toBe("PptrKitError");
+    expect((err as { retryable: boolean }).retryable).toBe(true);
+    expect((err as { cause?: unknown }).cause).toBe(stopCause);
   });
 });
