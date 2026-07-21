@@ -37,6 +37,9 @@
     "lint": "eslint src",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@technical-1/core": "workspace:^"
+  },
   "peerDependencies": {
     "puppeteer-core": ">=22 <25"
   },

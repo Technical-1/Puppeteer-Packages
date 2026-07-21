@@ -161,6 +161,10 @@ importers:
         version: 24.43.1
 
   packages/extract:
+    dependencies:
+      '@technical-1/core':
+        specifier: workspace:^
+        version: link:../core
     devDependencies:
       puppeteer-core:
         specifier: ^24.4.0
