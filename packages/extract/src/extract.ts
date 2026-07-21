@@ -3,21 +3,49 @@ import type { Page } from "puppeteer-core";
 // Minimal browser-global declarations for in-page evaluate callbacks (roadmap
 // convention). Module-scoped; NOT the DOM lib, NOT @types. Declare only what
 // the callbacks below use.
-interface InPageElement {
-  textContent: string | null;
-  querySelectorAll(s: string): Iterable<InPageElement>;
-}
-declare var document: {
+interface InPageRoot {
   querySelector(s: string): InPageElement | null;
   querySelectorAll(s: string): Iterable<InPageElement>;
-};
+}
+interface InPageElement {
+  textContent: string | null;
+  shadowRoot: InPageRoot | null;
+  querySelector(s: string): InPageElement | null;
+  querySelectorAll(s: string): Iterable<InPageElement>;
+}
+declare var document: InPageRoot;
+
+export interface ExtractOptions {
+  /** Traverse OPEN shadow roots when resolving the selector. Default false. */
+  pierceShadow?: boolean;
+}
 
 /** Trimmed textContent of the first match; "" if absent OR textContent is null/empty. */
-export async function extractText(page: Page, selector: string): Promise<string> {
-  const text = await page.evaluate((sel: string) => {
-    const el = document.querySelector(sel);
-    return el && el.textContent ? el.textContent : "";
-  }, selector);
+export async function extractText(
+  page: Page,
+  selector: string,
+  options: ExtractOptions = {},
+): Promise<string> {
+  const pierce = options.pierceShadow ?? false;
+  const text = await page.evaluate(
+    (sel: string, deep: boolean) => {
+      function deepFirst(root: InPageRoot, s: string): InPageElement | null {
+        const direct = root.querySelector(s);
+        if (direct) return direct;
+        for (const el of Array.from(root.querySelectorAll("*"))) {
+          if (el.shadowRoot) {
+            const found = deepFirst(el.shadowRoot, s);
+            if (found) return found;
+          }
+        }
+        return null;
+      }
+      const el = deep ? deepFirst(document, sel) : document.querySelector(sel);
+      return el && el.textContent ? el.textContent : "";
+    },
+    selector,
+    pierce,
+  );
   return text.trim();
 }
 

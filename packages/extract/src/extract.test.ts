@@ -24,6 +24,7 @@ function mockPage(overrides: Record<string, unknown> = {}): Page {
 /** Minimal in-page element shape used by the evaluate callbacks. */
 interface FakeEl {
   textContent: string | null;
+  shadowRoot: FakeDocument | null;
   querySelectorAll: (s: string) => Iterable<FakeEl>;
 }
 
@@ -31,6 +32,7 @@ interface FakeEl {
 function fakeEl(textContent: string | null, children: FakeEl[] = []): FakeEl {
   return {
     textContent,
+    shadowRoot: null,
     querySelectorAll: (_s: string) => children,
   };
 }
@@ -118,6 +120,50 @@ describe("extractText", () => {
   });
 });
 
+describe("extractText pierceShadow", () => {
+  it("does NOT pierce by default (deep=false path uses document.querySelector)", async () => {
+    // direct match present; querySelectorAll('*') would throw if touched
+    const doc: FakeDocument = {
+      querySelector: (s) => (s === "span.deep" ? fakeEl("  top  ") : null),
+      querySelectorAll: () => {
+        throw new Error("must not enumerate when pierceShadow is false");
+      },
+    };
+    const page = captureEvaluatePage(doc, "  top  ");
+    expect(await extractText(page, "span.deep")).toBe("top");
+  });
+
+  it("pierces one open shadow root to find the target (deep=true recursion)", async () => {
+    const target = fakeEl("  shadowed  ");
+    const shadow: FakeDocument = {
+      querySelector: (s) => (s === "span.deep" ? target : null),
+      querySelectorAll: () => [],
+    };
+    const host = fakeEl(null);
+    host.shadowRoot = shadow;
+    const doc: FakeDocument = {
+      querySelector: () => null, // no direct match at document
+      querySelectorAll: (s) => (s === "*" ? [host] : []),
+    };
+    const page = captureEvaluatePage(doc, "  shadowed  ");
+    expect(await extractText(page, "span.deep", { pierceShadow: true })).toBe(
+      "shadowed",
+    );
+  });
+
+  it("returns '' when pierceShadow finds nothing (no direct, no shadow host matches)", async () => {
+    const plain = fakeEl("x"); // element with shadowRoot null → skipped by walker
+    const doc: FakeDocument = {
+      querySelector: () => null,
+      querySelectorAll: (s) => (s === "*" ? [plain] : []),
+    };
+    const page = captureEvaluatePage(doc, "");
+    expect(await extractText(page, "span.deep", { pierceShadow: true })).toBe(
+      "",
+    );
+  });
+});
+
 describe("extractAll", () => {
   it("returns trimmed text of every match", async () => {
     const page = mockPage({ evaluate: vi.fn().mockResolvedValue([" a ", "b "]) });
@@ -197,10 +243,12 @@ describe("extractTable", () => {
       };
       const rowEl = {
         textContent: "",
+        shadowRoot: null,
         querySelectorAll: (s: string) => (s === "td, th" ? [td1, td2] : []),
       };
       const tableElWithRow = {
         textContent: "",
+        shadowRoot: null,
         querySelectorAll: (_s: string) => [rowEl],
       };
       const doc: FakeDocument = {
@@ -216,10 +264,12 @@ describe("extractTable", () => {
       const cellWithNull = fakeEl(null);
       const row = {
         textContent: "",
+        shadowRoot: null,
         querySelectorAll: (_s: string) => [cellWithNull],
       };
       const tableElWithNullCell = {
         textContent: "",
+        shadowRoot: null,
         querySelectorAll: (_s: string) => [row],
       };
       const doc: FakeDocument = {
