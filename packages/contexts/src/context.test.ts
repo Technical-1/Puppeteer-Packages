@@ -184,6 +184,20 @@ describe("clearContextPermissions", () => {
       retryable: true,
     });
   });
+
+  it("logs step then success through the injected logger", async () => {
+    const ctx = contextMock();
+    const log = vi.fn();
+    await clearContextPermissions(ctx, { logger: { log } });
+    expect(log).toHaveBeenCalledWith(
+      "contexts: clearing permission overrides",
+      "step",
+    );
+    expect(log).toHaveBeenCalledWith(
+      "contexts: cleared permission overrides",
+      "success",
+    );
+  });
 });
 
 describe("withContext", () => {
@@ -239,5 +253,31 @@ describe("withContext", () => {
       proxyServer: "http://h:2",
     });
     expect(create).toHaveBeenCalledWith({ proxyServer: "http://h:2" });
+  });
+
+  it("logs an info message through the injected logger when close succeeds", async () => {
+    const ctx = contextMock();
+    const { browser } = browserMock(ctx);
+    const log = vi.fn();
+    await withContext(browser, () => Promise.resolve("ok"), {
+      logger: { log },
+    });
+    expect(log).toHaveBeenCalledWith("contexts: context closed", "info");
+  });
+
+  it("stringifies a non-Error close rejection in the warn log", async () => {
+    const ctx = contextMock({
+      close: vi.fn().mockRejectedValue("close boom"),
+    });
+    const { browser } = browserMock(ctx);
+    const log = vi.fn();
+    const result = await withContext(browser, () => Promise.resolve(42), {
+      logger: { log },
+    });
+    expect(result).toBe(42);
+    expect(log).toHaveBeenCalledWith(
+      "contexts: context close failed: close boom",
+      "warn",
+    );
   });
 });

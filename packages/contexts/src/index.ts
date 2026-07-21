@@ -1,2 +1,12 @@
-// Placeholder — real exports land in Task 7's barrel.
-export const __contextsScaffold = true;
+export {
+  createIsolatedContext,
+  withContext,
+  listContextTargets,
+  overridePermissions,
+  clearContextPermissions,
+} from "./context.js";
+export type {
+  IsolatedContextOptions,
+  ContextPermissionGrant,
+  TargetInfo,
+} from "./types.js";
