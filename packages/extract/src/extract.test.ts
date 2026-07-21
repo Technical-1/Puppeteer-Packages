@@ -313,6 +313,50 @@ describe("extractTable", () => {
       expect(result).toEqual([[""]]);
     });
   });
+
+  describe("extractTable pierceShadow", () => {
+    it("locates a table inside an open shadow root, then reads rows/cells", async () => {
+      const cellA = fakeEl(" A ");
+      const cellB = fakeEl(" B ");
+      const rowEl = {
+        textContent: "",
+        shadowRoot: null,
+        querySelector: () => null,
+        querySelectorAll: (s: string) => (s === "td, th" ? [cellA, cellB] : []),
+      };
+      const tableEl = {
+        textContent: "",
+        shadowRoot: null,
+        querySelector: () => null,
+        querySelectorAll: (s: string) => (s === "tr" ? [rowEl] : []),
+      };
+      const shadow: FakeDocument = {
+        querySelector: (s) => (s === "table" ? tableEl : null),
+        querySelectorAll: () => [],
+      };
+      const host = fakeEl(null);
+      host.shadowRoot = shadow;
+      const doc: FakeDocument = {
+        querySelector: () => null, // no table at top level
+        querySelectorAll: (s) => (s === "*" ? [host] : []),
+      };
+      const page = captureEvaluatePage(doc, []);
+      expect(await extractTable(page, "table", { pierceShadow: true })).toEqual([
+        ["A", "B"],
+      ]);
+    });
+
+    it("returns [] when pierceShadow cannot locate the table", async () => {
+      const doc: FakeDocument = {
+        querySelector: () => null,
+        querySelectorAll: (s) => (s === "*" ? [] : []),
+      };
+      const page = captureEvaluatePage(doc, []);
+      expect(
+        await extractTable(page, "table#missing", { pierceShadow: true }),
+      ).toEqual([]);
+    });
+  });
 });
 
 describe("extractSchema", () => {

@@ -81,6 +81,9 @@ export async function extractAll(
 
 /**
  * Rows × cells of trimmed text from the first matching table. `[]` if absent.
+ * With `pierceShadow`, the table is located through open shadow roots; row/cell
+ * resolution within the located table is unchanged (a table whose rows/cells are
+ * themselves split across nested shadow roots is out of scope).
  *
  * v1 limitation: uses `querySelectorAll("tr")`, which also matches rows of any
  * nested `<table>` inside a cell (and that cell's text concatenates nested
@@ -90,17 +93,34 @@ export async function extractAll(
 export async function extractTable(
   page: Page,
   selector: string,
+  options: ExtractOptions = {},
 ): Promise<string[][]> {
-  return page.evaluate((sel: string) => {
-    const table = document.querySelector(sel);
-    if (!table) return [] as string[][];
-    const rows = Array.from(table.querySelectorAll("tr"));
-    return rows.map((row) =>
-      Array.from(row.querySelectorAll("td, th")).map((cell) =>
-        (cell.textContent ? cell.textContent : "").trim(),
-      ),
-    );
-  }, selector);
+  const pierce = options.pierceShadow ?? false;
+  return page.evaluate(
+    (sel: string, deep: boolean) => {
+      function deepFirst(root: InPageRoot, s: string): InPageElement | null {
+        const direct = root.querySelector(s);
+        if (direct) return direct;
+        for (const el of Array.from(root.querySelectorAll("*"))) {
+          if (el.shadowRoot) {
+            const found = deepFirst(el.shadowRoot, s);
+            if (found) return found;
+          }
+        }
+        return null;
+      }
+      const table = deep ? deepFirst(document, sel) : document.querySelector(sel);
+      if (!table) return [] as string[][];
+      const rows = Array.from(table.querySelectorAll("tr"));
+      return rows.map((row) =>
+        Array.from(row.querySelectorAll("td, th")).map((cell) =>
+          (cell.textContent ? cell.textContent : "").trim(),
+        ),
+      );
+    },
+    selector,
+    pierce,
+  );
 }
 
 export type ExtractSchema = Record<string, string>;
