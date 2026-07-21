@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Technical-1/Puppeteer-Packages/actions/workflows/ci.yml/badge.svg)](https://github.com/Technical-1/Puppeteer-Packages/actions/workflows/ci.yml)
 
-**Automate a browser without the boilerplate.** This is a family of 22 small, focused npm packages for driving Chrome with [`puppeteer-core`](https://pptr.dev/) — one for launching a browser, one for navigating with retries, one for pulling data out of the page, one for stealth, one for screenshots, and so on. Pick only the pieces you need, install them from the `@technical-1/*` scope, and skip the pile of copy-pasted helpers that every automation project seems to grow.
+**Automate a browser without the boilerplate.** This is a family of 29 small, focused npm packages for driving Chrome with [`puppeteer-core`](https://pptr.dev/) — one for launching a browser, one for navigating with retries, one for pulling data out of the page, one for stealth, one for screenshots, and so on. Pick only the pieces you need, install them from the `@technical-1/*` scope, and skip the pile of copy-pasted helpers that every automation project seems to grow.
 
 Each package does one job well. They share a tiny common `core` — a set of types, a typed error hierarchy, and a logging contract — so the ones you install snap together cleanly instead of fighting each other.
 
@@ -21,10 +21,10 @@ Each package does one job well. They share a tiny common `core` — a set of typ
 |------|----------|--------------|
 | Foundation | `core`, `retry`, `logger`, `config` | Shared types & errors, backoff/retry, logging, typed config loading |
 | Browser | `chrome-setup`, `launcher` | Get a Chrome binary; launch and manage browsers (scoped or pooled) |
-| Navigation & data | `navigation`, `interaction-helpers`, `extract`, `dialogs` | Navigate with retries, click/type safely, extract text/tables/schemas, auto-handle JS dialogs |
-| Anti-detection | `stealth`, `fingerprint`, `human`, `proxy`, `emulation` | Stealth plugin, realistic fingerprints, human-like timing, proxies, device/viewport emulation |
-| State & traffic | `session`, `network` | Capture/restore cookies & storage; block requests, capture responses, throttle |
-| Output | `screenshots`, `pdf`, `downloads` | Full-page/element screenshots, PDF rendering, download awaiting |
+| Navigation & flows | `navigation`, `interaction-helpers`, `extract`, `dialogs`, `auth-flow` | Navigate with retries, click/type/scroll/clipboard safely, extract text/tables/schemas (shadow-DOM aware, paginated), auto-handle JS dialogs, orchestrate login → optional MFA/OTP → authenticated state |
+| Anti-detection | `stealth`, `fingerprint`, `human`, `proxy`, `emulation` | Stealth plugin, realistic fingerprints, human-like timing (incl. drag-and-drop), proxies, device/viewport/permission/geolocation/media emulation |
+| State & advanced | `session`, `network`, `contexts`, `cdp`, `workers` | Capture/restore cookies & storage; block/mock requests, capture responses, throttle CPU/network; isolated incognito contexts with guaranteed cleanup; a generic CDP escape hatch; enumerate and evaluate inside Web/Service Workers |
+| Diagnostics & output | `screenshots`, `pdf`, `downloads`, `a11y`, `coverage`, `tracing` | Screenshots, PDF rendering, download awaiting, accessibility-tree snapshots, JS/CSS coverage collection, DevTools performance tracing |
 | Extras | `captcha`, `tabs` | Captcha-solver adapter (2captcha reference); coordinate popups & new tabs |
 
 Every package lives under the `@technical-1/*` scope on npm, each with its own README and its own version.
@@ -94,7 +94,7 @@ PPTR_IT=1 pnpm --filter @technical-1/integration-tests test
 
 ```
 .
-├── packages/            # the 22 published @technical-1/* packages
+├── packages/            # the 29 published @technical-1/* packages
 ├── examples/            # one runnable, typecheck-gated demo per package
 ├── tests/integration/   # real-Chrome tests against a local fixture server (PPTR_IT=1)
 ├── scripts/             # build helpers
