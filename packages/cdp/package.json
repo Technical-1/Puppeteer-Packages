@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/cdp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Generic CDPSession escape hatch: open a session from a Page or Target, send typed commands, subscribe to events, and detach safely.",
   "license": "MIT",
   "repository": {

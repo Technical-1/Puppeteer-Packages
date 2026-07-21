@@ -1,5 +1,18 @@
 # @technical-1/human
 
+## 1.1.0
+
+### Minor Changes
+
+- 88ac31b: Add `dragAndDrop(page, sourceSelector, targetSelector, { steps? })`: resolves both selectors to their bounding-box centres and performs a humanized mouse down → interpolated move (via `humanMouseMove`) → up. Throws the typed `SelectorNotFoundError` for a missing or box-less element. This adds `@technical-1/core` as a runtime dependency (previously type-only `puppeteer-core`).
+
+### Patch Changes
+
+- Updated dependencies [c1b1c0c]
+- Updated dependencies [122c871]
+- Updated dependencies [34f2973]
+  - @technical-1/core@1.1.0
+
 ## 1.0.0
 
 ### Major Changes

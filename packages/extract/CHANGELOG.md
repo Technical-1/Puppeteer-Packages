@@ -1,5 +1,25 @@
 # @technical-1/extract
 
+## 1.1.0
+
+### Minor Changes
+
+- b163aeb: Add shadow-DOM piercing and a pagination iterator.
+
+  - `extractText`/`extractAll`/`extractTable`/`extractSchema` accept an optional
+    `{ pierceShadow?: boolean }` that recurses through open shadow roots to reach
+    content inside web components. Default `false` preserves existing behavior.
+  - New `extractPaginated(page, { nextSelector, extractFn, maxPages, settleMs })`
+    runs an extractor across a paginated listing, clicking "next" until the control
+    disappears or `maxPages` is reached, aggregating all results.
+
+### Patch Changes
+
+- Updated dependencies [c1b1c0c]
+- Updated dependencies [122c871]
+- Updated dependencies [34f2973]
+  - @technical-1/core@1.1.0
+
 ## 1.0.0
 
 ### Major Changes
