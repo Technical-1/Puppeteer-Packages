@@ -206,6 +206,33 @@ describe("login — MFA step", () => {
     });
     expect(result.mfaPerformed).toBe(true);
   });
+
+  it("throws a non-retryable ConfigError when codeSelector is given without code", async () => {
+    const { page, type, click } = pageMock();
+    await expect(
+      login(page, { ...base, mfa: { codeSelector: "#otp" } }),
+    ).rejects.toMatchObject({ name: "ConfigError", retryable: false });
+    expect(type).not.toHaveBeenCalledWith("#otp", expect.anything(), expect.anything());
+    expect(click).not.toHaveBeenCalledWith("#otp-submit");
+  });
+
+  it("throws a non-retryable ConfigError when code is given without codeSelector", async () => {
+    const { page, type, click } = pageMock();
+    await expect(
+      login(page, { ...base, mfa: { code: "123" } }),
+    ).rejects.toMatchObject({ name: "ConfigError", retryable: false });
+    expect(type).not.toHaveBeenCalledWith("#otp", expect.anything(), expect.anything());
+    expect(click).not.toHaveBeenCalledWith("#otp-submit");
+  });
+
+  it("throws a non-retryable ConfigError when submitSelector is given without a code pair", async () => {
+    const { page, type, click } = pageMock();
+    await expect(
+      login(page, { ...base, mfa: { submitSelector: "#s" } }),
+    ).rejects.toMatchObject({ name: "ConfigError", retryable: false });
+    expect(type).not.toHaveBeenCalledWith("#otp", expect.anything(), expect.anything());
+    expect(click).not.toHaveBeenCalledWith("#s");
+  });
 });
 
 describe("login — logger", () => {

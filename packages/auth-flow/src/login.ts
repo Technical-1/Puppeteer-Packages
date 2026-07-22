@@ -1,5 +1,5 @@
 import type { Page } from "puppeteer-core";
-import { SelectorNotFoundError, TimeoutError } from "@technical-1/core";
+import { ConfigError, SelectorNotFoundError, TimeoutError } from "@technical-1/core";
 import type { LoggerOption } from "@technical-1/core";
 import type { AuthCheck, LoginResult, LoginSteps, MfaStep } from "./types.js";
 
@@ -84,6 +84,27 @@ async function runMfa(
   mfa: MfaStep,
   cfg: StepConfig,
 ): Promise<void> {
+  const hasCode = mfa.code !== undefined;
+  const hasCodeSelector = mfa.codeSelector !== undefined;
+  if (hasCode !== hasCodeSelector) {
+    throw new ConfigError(
+      "auth-flow: MFA `code` and `codeSelector` must be provided together",
+      { context: { hasCode, hasCodeSelector } },
+    );
+  }
+  if (mfa.submitSelector !== undefined && !(hasCode && hasCodeSelector)) {
+    throw new ConfigError(
+      "auth-flow: MFA `submitSelector` requires both `code` and `codeSelector`",
+      { context: {} },
+    );
+  }
+  if (mfa.waitFor === undefined && !hasCode && !hasCodeSelector) {
+    throw new ConfigError(
+      "auth-flow: MFA step must specify `waitFor` or a `code`+`codeSelector` pair",
+      { context: {} },
+    );
+  }
+
   cfg.logger?.log("auth-flow: handling MFA step", "step");
   if (mfa.waitFor) {
     await waitForState(page, mfa.waitFor, cfg.authTimeout, cfg.pollInterval, "mfa");
