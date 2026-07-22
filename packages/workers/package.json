@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/workers",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Web/Service Worker awareness for Puppeteer pages: enumerate workers, evaluate inside a worker, and observe worker lifecycle with typed events and a DI logger.",
   "license": "MIT",
   "repository": {

@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/contexts",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Isolated BrowserContext lifecycle for Puppeteer — create/close incognito contexts with guaranteed cleanup, per-context proxy, permission overrides, and typed target enumeration.",
   "license": "MIT",
   "repository": {

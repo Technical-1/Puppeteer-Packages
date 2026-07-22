@@ -1,5 +1,11 @@
 # @technical-1/tracing
 
+## 1.1.1
+
+### Patch Changes
+
+- a864617: Include `context.path` in the `tracing.stop` failure and empty-buffer errors for parity with the start-failure error.
+
 ## 1.1.0
 
 ### Minor Changes

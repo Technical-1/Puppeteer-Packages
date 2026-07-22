@@ -1,5 +1,11 @@
 # @technical-1/workers
 
+## 1.1.1
+
+### Patch Changes
+
+- a864617: Clarify the lifecycle-handler error message in `observeWorkers` (it can originate from the consumer callback or the logger), and document the deliberate error-path boundary.
+
 ## 1.1.0
 
 ### Minor Changes
