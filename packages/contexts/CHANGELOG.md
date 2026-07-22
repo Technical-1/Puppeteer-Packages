@@ -1,5 +1,11 @@
 # @technical-1/contexts
 
+## 1.1.1
+
+### Patch Changes
+
+- a864617: Internal cleanup: make the never-throw close helper package-private, and omit `proxyServer` from the error context when no proxy was configured.
+
 ## 1.1.0
 
 ### Minor Changes

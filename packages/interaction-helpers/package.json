@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/interaction-helpers",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Hardened safeClick/safeType/waitAndGet/scroll page helpers throwing typed @technical-1/core errors",
   "license": "MIT",
   "repository": {

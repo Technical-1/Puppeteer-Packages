@@ -1,6 +1,6 @@
 {
   "name": "@technical-1/auth-flow",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Login-flow orchestration for Puppeteer pages: fill credentials, submit, optional MFA/OTP step, and wait for the authenticated state — with the suite's typed errors and DI logger.",
   "license": "MIT",
   "repository": {

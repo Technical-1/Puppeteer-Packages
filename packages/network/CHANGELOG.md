@@ -1,5 +1,11 @@
 # @technical-1/network
 
+## 1.1.1
+
+### Patch Changes
+
+- a864617: Internal style normalization of `MockRequestsOptions` (no behavior or API change).
+
 ## 1.1.0
 
 ### Minor Changes

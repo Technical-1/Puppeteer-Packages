@@ -1,5 +1,11 @@
 # @technical-1/interaction-helpers
 
+## 1.1.1
+
+### Patch Changes
+
+- a864617: `waitForFunction` now only wraps a genuine timeout as a retryable `TimeoutError`; a deterministic predicate-evaluation error (e.g. a `ReferenceError` in the page function) surfaces as a non-retryable `PptrKitError` so it is not retried indefinitely.
+
 ## 1.1.0
 
 ### Minor Changes
