@@ -1,5 +1,5 @@
 import type { JSHandle } from "puppeteer-core";
-import { TimeoutError } from "@technical-1/core";
+import { PptrKitError, TimeoutError } from "@technical-1/core";
 import type { LoggerOption, TimeoutOption } from "@technical-1/core";
 import type { PageOrFrame } from "./helpers.js";
 import { DEFAULT_TIMEOUT } from "./helpers.js";
@@ -45,7 +45,18 @@ export async function waitForFunction<T = unknown>(
     );
     return handle as JSHandle<T>;
   } catch (err) {
-    throw new TimeoutError("waitForFunction predicate never became truthy", {
+    const isTimeout =
+      err instanceof Error &&
+      (err.name === "TimeoutError" ||
+        /timeout|exceeded|waiting (for )?function failed/i.test(err.message));
+    if (isTimeout) {
+      throw new TimeoutError("waitForFunction predicate never became truthy", {
+        cause: err,
+        context: { timeout },
+      });
+    }
+    throw new PptrKitError("waitForFunction: page function evaluation failed", {
+      retryable: false,
       cause: err,
       context: { timeout },
     });

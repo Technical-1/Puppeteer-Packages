@@ -53,4 +53,16 @@ describe("waitForFunction", () => {
     expect(err.cause).toBe(cause);
     expect(err.context).toMatchObject({ timeout: DEFAULT_TIMEOUT });
   });
+
+  it("wraps a non-timeout predicate error as a non-retryable PptrKitError carrying the cause", async () => {
+    const cause = new Error("x is not defined");
+    cause.name = "ReferenceError";
+    const wff = vi.fn().mockRejectedValue(cause);
+    const page = pageWith(wff);
+
+    const err = await waitForFunction(page, () => false).catch((e) => e);
+    expect(err.name).toBe("PptrKitError");
+    expect(err.retryable).toBe(false);
+    expect(err.cause).toBe(cause);
+  });
 });
