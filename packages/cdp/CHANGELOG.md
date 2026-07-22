@@ -1,5 +1,11 @@
 # @technical-1/cdp
 
+## 1.1.1
+
+### Patch Changes
+
+- 3e3e49b: Verify the automated OIDC release pipeline (trusted publishing). No functional changes.
+
 ## 1.1.0
 
 ### Minor Changes
