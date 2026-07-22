@@ -46,4 +46,6 @@ and the injected `logger` at level `error` — never thrown from inside the even
 
 ## Peer
 
-Requires `puppeteer-core` `>=22 <25`.
+Requires `puppeteer-core` `>=22 <25`. It is a **type-only** peer dependency — it
+supplies the `Page`/`WebWorker` types used at compile time; this package never
+imports it at runtime.

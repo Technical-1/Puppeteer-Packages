@@ -56,9 +56,12 @@ export function observeWorkers(
       }
     } catch (cause) {
       const error = new WorkerError(
-        `workers: consumer callback threw for ${kind} worker`,
+        `workers: ${kind} lifecycle handler threw`,
         { retryable: true, cause, context: { kind, url } },
       );
+      // Deliberately unwrapped: a throwing logger/onError is the caller's own
+      // bug, not ours to swallow. Wrapping it here would only relocate the
+      // problem rather than fix it, so let it propagate.
       opts.logger?.log(error.message, "error");
       opts.onError?.(error);
     }

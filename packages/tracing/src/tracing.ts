@@ -74,6 +74,7 @@ export async function traceRun<T>(
       throw new PptrKitError("traceRun: tracing.stop failed", {
         retryable: true,
         cause: stopCause,
+        context: path !== undefined ? { path } : {},
       });
     }
   }
@@ -83,6 +84,7 @@ export async function traceRun<T>(
   if (buffer === undefined) {
     throw new PptrKitError("traceRun: tracing produced no buffer", {
       retryable: true,
+      context: path !== undefined ? { path } : {},
     });
   }
   logger?.log(`trace captured (${buffer.length} bytes)`, "success");

@@ -106,7 +106,7 @@ describe("observeWorkers — consumer isolation", () => {
     expect(err.retryable).toBe(true);
     expect(err.context).toEqual({ kind: "created", url: "blob:a" });
     expect(log).toHaveBeenCalledWith(
-      "workers: consumer callback threw for created worker",
+      "workers: created lifecycle handler threw",
       "error",
     );
   });

@@ -52,7 +52,7 @@ export async function createIsolatedContext(
     throw new ContextError("contexts: failed to create browser context", {
       retryable: true,
       cause,
-      context: { proxyServer: opts.proxyServer },
+      context: opts.proxyServer !== undefined ? { proxyServer: opts.proxyServer } : {},
     });
   }
 
@@ -153,4 +153,3 @@ export async function withContext<T>(
   return result;
 }
 
-export { closeQuietly };

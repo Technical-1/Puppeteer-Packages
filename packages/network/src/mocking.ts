@@ -19,7 +19,7 @@ export interface MockRule {
   readonly action: MockAction;
 }
 
-export interface MockRequestsOptions extends LoggerOption {}
+export type MockRequestsOptions = LoggerOption;
 
 function ruleMatches(rule: MockRule, req: HTTPRequest): boolean {
   return rule.when instanceof RegExp ? rule.when.test(req.url()) : rule.when(req);
