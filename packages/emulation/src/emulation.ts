@@ -56,7 +56,7 @@ async function applyDevice(page: Page, device: Device, label: string): Promise<v
  * - Pass a bare `Viewport` (`{ width, height, deviceScaleFactor?, isMobile?, hasTouch?,
  *   isLandscape? }`) to set just the viewport via `page.setViewport`.
  *
- * Throws `PptrKitError` `retryable:false` for an unknown preset name (deterministic caller
+ * Throws `ConfigError` `retryable:false` for an unknown preset name (deterministic caller
  * error). Wraps a `page.emulate` / `page.setViewport` rejection as `PptrKitError`
  * `retryable:true` carrying the original as `cause`.
  */
@@ -72,8 +72,7 @@ export async function emulateDevice(
     // widen explicitly so an out-of-catalog name (from a caller cast) is caught at runtime.
     const device = (KnownDevices as Record<string, Device | undefined>)[target];
     if (device === undefined) {
-      throw new PptrKitError(`Unknown device preset: ${target}`, {
-        retryable: false,
+      throw new ConfigError(`Unknown device preset: ${target}`, {
         context: { device: target },
       });
     }

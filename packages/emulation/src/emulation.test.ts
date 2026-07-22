@@ -120,13 +120,13 @@ describe("emulateDevice — KnownDevices preset", () => {
     expect(logger.log).toHaveBeenCalledWith("emulated device preset iPhone 15 Pro", "success");
   });
 
-  it("throws a NON-retryable PptrKitError for an unknown preset name", async () => {
+  it("throws a NON-retryable ConfigError for an unknown preset name", async () => {
     const page = mockPage();
     await expect(
       // deliberately unknown name — cast through unknown to bypass the KnownDeviceName type
       emulateDevice(page, "Nokia 3310" as unknown as Parameters<typeof emulateDevice>[1]),
     ).rejects.toMatchObject({
-      name: "PptrKitError",
+      name: "ConfigError",
       retryable: false,
       context: { device: "Nokia 3310" },
     });
